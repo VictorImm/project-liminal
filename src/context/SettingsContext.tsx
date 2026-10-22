@@ -8,6 +8,7 @@ export interface GameSettings {
   masterVolume: number;
   mouseSensitivity: number;
   enableCRTShader: boolean;
+  headBobIntensity: number; // 0.0 (Off / Anti-Motion Sickness) to 1.0 (Gentle Translational Bob)
 }
 
 interface SettingsContextType {
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   masterVolume: 0.8,
   mouseSensitivity: 1.0,
   enableCRTShader: true,
+  headBobIntensity: 0.4, // Default to gentle, anti-motion sickness level
 };
 
 const STORAGE_KEY = 'liminal_drift_settings_v2';

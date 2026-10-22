@@ -18,10 +18,11 @@ export class FPSControls {
   public isSprinting: boolean = false;
   public isCrouching: boolean = false;
   public sensitivity: number = 1.0;
+  public bobIntensity: number = 0.4; // Anti-motion sickness: 0.0 = static horizon, 1.0 = subtle translational bob
 
   private keys: { [key: string]: boolean } = {};
   private euler = new THREE.Euler(0, 0, 0, 'YXZ');
-  private shakeOffset = { pitch: 0, yaw: 0, roll: 0 };
+  private bobOffset = { y: 0, lateral: 0 };
   private stepDistance: number = 0;
   private headBobTimer: number = 0;
   private baseHeight: number = 1.6;
@@ -40,6 +41,7 @@ export class FPSControls {
     this.camera = camera;
     this.domElement = domElement;
     this.callbacks = callbacks || {};
+    this.position.copy(this.camera.position);
 
     this.onKeyDownBound = this.onKeyDown.bind(this);
     this.onKeyUpBound = this.onKeyUp.bind(this);
@@ -123,6 +125,11 @@ export class FPSControls {
   }
 
   public update(delta: number, collisionCheck?: (newPos: THREE.Vector3) => boolean) {
+    // Sync initial player position if not set
+    if (this.position.lengthSq() === 0 && this.camera.position.lengthSq() > 0) {
+      this.position.copy(this.camera.position);
+    }
+
     const isSprint = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) && !this.isCrouching;
     const isCrouch = this.keys['KeyC'];
     this.isSprinting = isSprint;
@@ -159,23 +166,23 @@ export class FPSControls {
       const deltaX = worldDirX * moveSpeed * delta;
       const deltaZ = worldDirZ * moveSpeed * delta;
 
-      const targetPos = this.camera.position.clone();
+      const targetPos = this.position.clone();
       targetPos.x += deltaX;
       targetPos.z += deltaZ;
 
       if (!collisionCheck || collisionCheck(targetPos)) {
-        this.camera.position.x = targetPos.x;
-        this.camera.position.z = targetPos.z;
+        this.position.x = targetPos.x;
+        this.position.z = targetPos.z;
       } else {
-        const slideX = this.camera.position.clone();
+        const slideX = this.position.clone();
         slideX.x += deltaX;
         if (!collisionCheck || collisionCheck(slideX)) {
-          this.camera.position.x = slideX.x;
+          this.position.x = slideX.x;
         } else {
-          const slideZ = this.camera.position.clone();
+          const slideZ = this.position.clone();
           slideZ.z += deltaZ;
           if (!collisionCheck || collisionCheck(slideZ)) {
-            this.camera.position.z = slideZ.z;
+            this.position.z = slideZ.z;
           }
         }
       }
@@ -184,7 +191,7 @@ export class FPSControls {
       this.stepDistance += dist;
 
       // Slower, deliberate stride rhythm ("pelan-pelan")
-      this.headBobTimer += delta * (this.isSprinting ? 7.2 : 4.6);
+      this.headBobTimer += delta * (this.isSprinting ? 7.0 : 4.6);
       const stepThreshold = this.isSprinting ? 1.4 : 1.2;
 
       if (this.stepDistance > stepThreshold) {
@@ -195,44 +202,40 @@ export class FPSControls {
       }
     }
 
-    // Realistic Walking Camera Shaky Motion & Organic Body Sway
-    const time = performance.now() * 0.001;
-    let targetPitchShake = 0;
-    let targetYawShake = 0;
-    let targetRollShake = 0;
+    // 1. Camera orientation: PURELY player look input!
+    // ZERO ROLL TILT, ZERO PITCH SHAKE, ZERO YAW DRIFT
+    // Horizon is 100% stable and level. Completely eliminates motion sickness!
+    this.camera.quaternion.setFromEuler(this.euler);
 
-    if (isMoving) {
-      const mult = this.isSprinting ? 1.7 : 1.0;
-      // Natural shoulder sway / roll tilt with each step
-      targetRollShake = Math.sin(this.headBobTimer * 0.5) * 0.022 * mult;
-      // Heel-impact pitch dip
-      targetPitchShake = Math.cos(this.headBobTimer) * 0.012 * mult;
-      // Micro handheld cam tremor & body inertia
-      targetYawShake = Math.sin(this.headBobTimer * 0.5) * 0.008 * mult + Math.sin(time * 11.0) * 0.0016 * mult;
-    } else {
-      // Gentle breathing idle sway
-      targetPitchShake = Math.sin(time * 1.6) * 0.0022;
-      targetRollShake = Math.cos(time * 1.2) * 0.0016;
+    // 2. Anti-Motion Sickness Translational Bobbing (Displacement ONLY, Zero Rotation)
+    const time = performance.now() * 0.001;
+    let targetBobY = 0;
+    let targetLateral = 0;
+
+    if (isMoving && this.bobIntensity > 0) {
+      // Natural harmonic footstep dip: dips slightly on heel contact, rises during push-off
+      targetBobY = Math.sin(this.headBobTimer * 2) * (this.isSprinting ? 0.022 : 0.014) * this.bobIntensity;
+      // Very gentle lateral weight shift between left & right steps
+      targetLateral = Math.cos(this.headBobTimer) * (this.isSprinting ? 0.012 : 0.007) * this.bobIntensity;
+    } else if (this.bobIntensity > 0) {
+      // Barely perceptible idle breathing displacement (2 millimeters)
+      targetBobY = Math.sin(time * 1.4) * 0.002 * this.bobIntensity;
     }
 
-    this.shakeOffset.pitch = THREE.MathUtils.lerp(this.shakeOffset.pitch, targetPitchShake, 0.2);
-    this.shakeOffset.yaw = THREE.MathUtils.lerp(this.shakeOffset.yaw, targetYawShake, 0.2);
-    this.shakeOffset.roll = THREE.MathUtils.lerp(this.shakeOffset.roll, targetRollShake, 0.2);
+    this.bobOffset.y = THREE.MathUtils.lerp(this.bobOffset.y, targetBobY, 0.18);
+    this.bobOffset.lateral = THREE.MathUtils.lerp(this.bobOffset.lateral, targetLateral, 0.18);
 
-    // Apply clean composed orientation (Base look angle + organic walking tremor)
-    const composedEuler = new THREE.Euler(
-      this.euler.x + this.shakeOffset.pitch,
-      this.euler.y + this.shakeOffset.yaw,
-      this.shakeOffset.roll,
-      'YXZ'
-    );
-    this.camera.quaternion.setFromEuler(composedEuler);
+    // Apply lateral displacement along camera local right vector
+    const rightX = Math.cos(this.euler.y);
+    const rightZ = -Math.sin(this.euler.y);
+
+    this.camera.position.x = this.position.x + rightX * this.bobOffset.lateral;
+    this.camera.position.z = this.position.z + rightZ * this.bobOffset.lateral;
 
     // Vertical height bobbing & dynamic terrain elevation tracking
-    const groundY = this.callbacks.getGroundHeight ? this.callbacks.getGroundHeight(this.camera.position.x, this.camera.position.z) : 0;
-    const targetHeight = (this.isCrouching ? 0.9 : this.baseHeight) + groundY;
-    const bobOffset = isMoving ? Math.sin(this.headBobTimer) * (this.isSprinting ? 0.05 : 0.024) : 0;
-    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetHeight + bobOffset, 0.18);
+    const groundY = this.callbacks.getGroundHeight ? this.callbacks.getGroundHeight(this.position.x, this.position.z) : 0;
+    const targetHeight = (this.isCrouching ? 0.9 : this.baseHeight) + groundY + this.bobOffset.y;
+    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetHeight, 0.2);
   }
 
   public dispose() {

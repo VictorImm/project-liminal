@@ -13,6 +13,7 @@ import {
   Monitor,
   Flame,
   AlertTriangle,
+  Activity,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -354,6 +355,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onChange={(e) => updateSettings({ mouseSensitivity: parseFloat(e.target.value) })}
                 className="w-full accent-cyan-500 cursor-pointer"
               />
+            </div>
+
+            {/* WALKING MOTION / HEAD BOB ACCESSIBILITY */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs font-semibold">
+                <span className="flex items-center gap-1.5 text-zinc-400 text-[11px] uppercase tracking-wider">
+                  <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Walking Motion (Anti-Motion Sickness)</span>
+                </span>
+                <span className="text-emerald-400 font-mono text-[11px]">
+                  {settings.headBobIntensity === 0
+                    ? 'OFF (STABLE)'
+                    : settings.headBobIntensity <= 0.4
+                    ? 'MINIMAL'
+                    : 'SUBTLE'}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.2"
+                value={settings.headBobIntensity}
+                onChange={(e) => updateSettings({ headBobIntensity: parseFloat(e.target.value) })}
+                className="w-full accent-emerald-500 cursor-pointer"
+              />
+              <p className="text-[10px] text-zinc-500">
+                Purely translational subtle displacement (zero rotation/tilt). Set to 0 to completely freeze camera horizon.
+              </p>
             </div>
 
             {/* RETRO CRT SHADER */}

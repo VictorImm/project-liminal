@@ -69,8 +69,9 @@ const GameContainer: React.FC = () => {
   useEffect(() => {
     if (controlsRef.current) {
       controlsRef.current.sensitivity = settings.mouseSensitivity;
+      controlsRef.current.bobIntensity = settings.headBobIntensity;
     }
-  }, [settings.mouseSensitivity]);
+  }, [settings.mouseSensitivity, settings.headBobIntensity]);
 
   // Pointer lock release safeguard
   useEffect(() => {
@@ -154,6 +155,7 @@ const GameContainer: React.FC = () => {
       },
     });
     controls.sensitivity = settings.mouseSensitivity;
+    controls.bobIntensity = settings.headBobIntensity;
     controlsRef.current = controls;
 
     const entity = new LiminalEntityAI(world.scene);
