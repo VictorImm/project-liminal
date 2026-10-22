@@ -408,13 +408,30 @@ class AudioEngineClass {
     const noiseVol = isSprinting ? 0.14 : 0.09;
 
     switch (surface) {
-      case 'water':
-        // Soft submerged puddle slosh
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(520, now);
-        filter.Q.setValueAtTime(1.2, now);
-        noiseGain.gain.setValueAtTime(noiseVol * 1.1, now);
+      case 'water': {
+        // Rich hydrodynamic liquid wading splash & droplet displacement
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(680, now);
+        filter.frequency.exponentialRampToValueAtTime(220, now + dur);
+        noiseGain.gain.setValueAtTime(noiseVol * 1.6, now);
+
+        // Liquid droplet resonance chirp (air bubble / water drop slap)
+        const dropOsc = this.ctx.createOscillator();
+        dropOsc.type = 'sine';
+        dropOsc.frequency.setValueAtTime(1480, now);
+        dropOsc.frequency.exponentialRampToValueAtTime(580, now + 0.08);
+
+        const dropGain = this.ctx.createGain();
+        dropGain.gain.setValueAtTime(0.001, now);
+        dropGain.gain.linearRampToValueAtTime(0.12, now + 0.015);
+        dropGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        dropOsc.connect(dropGain);
+        dropGain.connect(this.masterGain);
+        dropOsc.start(now);
+        dropOsc.stop(now + 0.08);
         break;
+      }
 
       case 'tile':
         // Muffled rubber sole pressure on tile
@@ -496,6 +513,37 @@ class AudioEngineClass {
     gain.connect(this.masterGain);
     osc.start(now);
     osc.stop(now + 0.12);
+  }
+
+  // Industrial high-pressure steam valve burst for Level 4 Boiler Rooms
+  public playSteamHiss(volume = 0.14) {
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const dur = 0.6 + Math.random() * 0.4;
+    const bufferSize = Math.floor(this.ctx.sampleRate * dur);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.4));
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2400 + Math.random() * 800, now);
+    filter.Q.setValueAtTime(1.8, now);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(volume, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    noise.start(now);
+    noise.stop(now + dur);
   }
 
   public playDoor(type: 'open' | 'close') {

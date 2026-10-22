@@ -86,25 +86,33 @@ export const VHSOsdOverlay: React.FC<VHSOsdOverlayProps> = ({
   const ff = String(frameTime.frames).padStart(2, '0');
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-30 select-none overflow-hidden">
-      {/* 1. NTSC Interlaced Scanline Layer */}
+    <div className="pointer-events-none fixed inset-0 z-10 select-none overflow-hidden">
+      {/* 1. Full-Screen Phosphor Color Bleed & CRT Grading */}
+      <div className="vhs-color-grade" />
+
+      {/* 2. Full-Screen Magnetic Static & Tape Noise Grain */}
+      <div className="vhs-tape-noise" />
+
+      {/* 3. Full-Screen NTSC Interlaced Scanlines */}
       <div className="vhs-interlace-lines" />
 
-      {/* 2. Tape Tracking Jitter Bar (Only on Full intensity) */}
+      {/* 4. Full-Screen Tape Tracking Roll Bar & Helical Head Switching Noise (Full intensity) */}
       {intensity === 'full' && (
         <>
           <div className="vhs-roll-bar" />
           <div className="vhs-tracking-noise-bar" />
+          <div className="vhs-flutter-line" />
         </>
       )}
 
-      {/* 3. VCR On-Screen Display (OSD) HUD */}
-      <div className="absolute inset-0 p-4 md:p-6 flex flex-col justify-between text-white font-mono text-xs md:text-sm">
-        {/* Top OSD Bar */}
+      {/* 5. VCR On-Screen Display (OSD) HUD (Positioned strictly in Top-Left & Bottom-Left) */}
+      {/* Leaves Top-Right (Battery HUD), Top-Center (Anchors), and Bottom-Right (Minimap) 100% unobstructed */}
+      <div className="absolute inset-0 p-4 md:p-6 flex flex-col justify-between text-white font-mono text-xs md:text-sm z-20">
+        {/* Top-Left OSD Stack */}
         <div className="flex justify-between items-start">
-          {/* Top-Left: Playback Status & Camcorder Rec */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
+          <div className="space-y-1 bg-black/35 p-2 rounded border border-white/5 backdrop-blur-[1px] max-w-fit">
+            {/* Playback Status & Camcorder Rec */}
+            <div className="flex items-center gap-3">
               {isPaused ? (
                 <span className="vhs-osd-text text-amber-300 font-extrabold tracking-widest text-sm md:text-base animate-pulse">
                   PAUSE ❚❚
@@ -119,38 +127,38 @@ export const VHSOsdOverlay: React.FC<VHSOsdOverlayProps> = ({
                   </span>
                 </div>
               )}
+
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-vhs-rec shadow-[0_0_8px_rgba(239,68,68,0.9)]" />
+                <span className="vhs-osd-text vhs-chromatic-text text-red-100 text-[11px] md:text-xs tracking-wider">
+                  REC [AUTO]
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-vhs-rec shadow-[0_0_8px_rgba(239,68,68,0.9)]" />
-              <span className="vhs-osd-text vhs-chromatic-text text-red-100 text-[11px] md:text-xs tracking-wider">
-                REC [AUTO]
-              </span>
+            {/* Retro Date & Real-time Clock (Moved from top-right to top-left to avoid battery overlap) */}
+            <div className="flex items-center gap-2 text-[10px] md:text-[11px] text-zinc-200">
+              <span className="vhs-osd-text tracking-wider">OCT. 22 1998</span>
+              <span className="text-zinc-500">•</span>
+              <span className="vhs-osd-text text-zinc-300 tracking-wider">{currentTimeStr}</span>
             </div>
-          </div>
 
-          {/* Top-Right: Retro Date & Real-time Clock */}
-          <div className="text-right space-y-0.5">
-            <div className="vhs-osd-text text-zinc-100 text-xs md:text-sm tracking-widest">
-              OCT. 22 1998
-            </div>
-            <div className="vhs-osd-text text-zinc-300 text-[11px] md:text-xs tracking-wider">
-              {currentTimeStr}
-            </div>
             {levelTitle && (
-              <div className="vhs-osd-text text-amber-400 text-[10px] md:text-[11px] uppercase tracking-wider opacity-90">
+              <div className="vhs-osd-text text-amber-400 text-[10px] uppercase tracking-wider opacity-90 pt-0.5">
                 {levelTitle}
               </div>
             )}
           </div>
+
+          {/* Top-Right deliberately kept empty for Battery Meter & Settings Gear Button in HUD */}
+          <div />
         </div>
 
-        {/* Bottom OSD Bar */}
-        <div className="flex justify-between items-end pb-3">
-          {/* Bottom-Left: Hi-Fi Stereo Audio & Camcorder Battery */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-[10px] md:text-xs text-zinc-200">
-              <span className="vhs-osd-text tracking-widest px-1 py-0.5 border border-zinc-500/80 rounded bg-black/40">
+        {/* Bottom-Left OSD Stack */}
+        <div className="flex justify-between items-end pb-2">
+          <div className="space-y-1 bg-black/35 p-2 rounded border border-white/5 backdrop-blur-[1px] max-w-fit">
+            <div className="flex items-center gap-2 text-[10px] md:text-xs text-zinc-300">
+              <span className="vhs-osd-text tracking-widest px-1 py-0.5 border border-zinc-600/80 rounded bg-black/50">
                 Hi-Fi STEREO
               </span>
               <span className="vhs-osd-text text-zinc-400 text-[10px]">
@@ -158,26 +166,17 @@ export const VHSOsdOverlay: React.FC<VHSOsdOverlayProps> = ({
               </span>
             </div>
 
-            {/* Camcorder Battery Glyphs */}
-            <div className="flex items-center gap-1.5 text-[10px] text-zinc-300">
-              <span className="vhs-osd-text">BATT:</span>
-              <div className="flex gap-0.5 border border-zinc-400 p-0.5 rounded-sm bg-black/50">
-                <span className="w-2 h-2.5 bg-emerald-400" />
-                <span className="w-2 h-2.5 bg-emerald-400" />
-                <span className="w-2 h-2.5 bg-emerald-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom-Right: Tape Timecode Counter & Tracking Status */}
-          <div className="text-right space-y-0.5">
-            <div className="vhs-osd-text text-zinc-400 text-[10px] tracking-wider">
-              AUTO TRACKING [|||||··]
-            </div>
             <div className="vhs-osd-text vhs-chromatic-text text-sm md:text-base tracking-widest font-extrabold text-white">
               TC 00:{mm}:{ss}:{ff}
             </div>
+
+            <div className="vhs-osd-text text-zinc-400 text-[10px] tracking-wider">
+              AUTO TRACKING [|||||··]
+            </div>
           </div>
+
+          {/* Bottom-Right deliberately kept empty for Minimap Radar */}
+          <div />
         </div>
       </div>
     </div>

@@ -16,6 +16,9 @@ import { VHSOsdOverlay } from './components/VHSOsdOverlay';
 
 type GameState = 'start' | 'playing' | 'jumpscare' | 'gameover';
 
+// Zero-allocation reusable scratch vector for camera heading calculation
+const _scratchCamDir = new THREE.Vector3();
+
 const GameContainer: React.FC = () => {
   const { settings } = useSettings();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -33,6 +36,21 @@ const GameContainer: React.FC = () => {
   const [isVictory, setIsVictory] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [currentLevel, setCurrentLevel] = useState<number>(1);
+  const currentLevelRef = useRef<number>(1);
+  const labyrinthRef = useRef<GeneratedLabyrinth | null>(null);
+  const handleInteractRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    currentLevelRef.current = currentLevel;
+  }, [currentLevel]);
+
+  useEffect(() => {
+    labyrinthRef.current = labyrinth;
+  }, [labyrinth]);
+
+  // High-performance UI throttle and room transition refs (prevent React re-render thrashing)
+  const uiThrottleTimerRef = useRef(0);
+  const lastRoomCoordsRef = useRef({ rx: 9999, rz: 9999 });
 
   // Seamless HUD Transmissions & Non-blocking Notifications
   const [hudToast, setHudToast] = useState<string | null>(null);
@@ -91,9 +109,11 @@ const GameContainer: React.FC = () => {
 
     const chosenLevel = Math.max(0, Math.min(4, startLevel));
     setCurrentLevel(chosenLevel);
+    currentLevelRef.current = chosenLevel;
     AudioEngine.setLevelAmbiance(chosenLevel);
 
     const gen = LabyrinthGenerator.generate(seed, chosenLevel);
+    labyrinthRef.current = gen;
     setLabyrinth(gen);
     anchorsCollectedRef.current = 0;
     setAnchorsCollected(0);
@@ -108,140 +128,220 @@ const GameContainer: React.FC = () => {
     setVisitedRooms(initialVisited);
 
     setGameState('playing');
-
-    // Seamless auto-engage pointer lock directly on user start gesture
-    setTimeout(() => {
-      canvasContainerRef.current?.requestPointerLock?.();
-    }, 50);
+    // ponytail: synchronously request lock on direct user start gesture
+    controlsRef.current?.requestLock();
   };
 
-  // Mount 3D Scene when entering 'playing'
+  // Switch level directly from in-game menu or exit portal without disposing canvas
+  const handleSwitchLevel = (targetLevel: number) => {
+    const chosenLevel = Math.max(0, Math.min(4, targetLevel));
+    setCurrentLevel(chosenLevel);
+    currentLevelRef.current = chosenLevel;
+    AudioEngine.setLevelAmbiance(chosenLevel);
+    AudioEngine.playDoor('open');
+
+    const currentSeed = labyrinth?.seed || 'LIMINAL-000000';
+    const nextGen = LabyrinthGenerator.generate(currentSeed, chosenLevel);
+    labyrinthRef.current = nextGen;
+    setLabyrinth(nextGen);
+
+    anchorsCollectedRef.current = 0;
+    setAnchorsCollected(0);
+
+    const newVisited = new Set<string>();
+    newVisited.add(`${nextGen.spawnRoom.x},${nextGen.spawnRoom.z}`);
+    setVisitedRooms(newVisited);
+
+    setIsSettingsOpen(false);
+    triggerToast(`SHIFTING SECTOR // ${nextGen.levelTitle}...`, 5000);
+    controlsRef.current?.requestLock();
+  };
+
+  // Sync difficulty dynamically
+  useEffect(() => {
+    if (entityRef.current) {
+      entityRef.current.setDifficulty(settings.difficulty);
+    }
+  }, [settings.difficulty]);
+
+  // Mount or Update 3D Scene (Single persistent canvas & controls instance)
   useEffect(() => {
     if (gameState !== 'playing' || !labyrinth || !canvasContainerRef.current) return;
 
-    if (worldRef.current) {
-      worldRef.current.dispose();
+    if (!worldRef.current) {
       canvasContainerRef.current.innerHTML = '';
-    }
+      const world = new LiminalWorld(canvasContainerRef.current);
+      world.buildLabyrinth(labyrinth);
+      worldRef.current = world;
 
-    const world = new LiminalWorld(canvasContainerRef.current);
-    world.buildLabyrinth(labyrinth);
-    worldRef.current = world;
-
-    const controls = new FPSControls(world.camera, world.renderer.domElement, {
-      getGroundHeight: (x, z) => world.getGroundHeight(x, z),
-      onToggleFlashlight: () => {
-        const state = world.toggleFlashlight();
-        setFlashlightOn(state);
-      },
-      onInteract: () => {
-        handleInteract();
-      },
-      onFootstep: (isSprinting) => {
-        // Detect exact room biome under player for realistic dynamic audio
-        const rx = Math.round(world.camera.position.x / world.roomSize);
-        const rz = Math.round(world.camera.position.z / world.roomSize);
-        const room = labyrinth?.rooms.find((r) => r.x === rx && r.z === rz);
-        let surface: 'carpet' | 'tile' | 'water' | 'metal' = 'carpet';
-        if (room?.biome === 'poolroom') surface = 'water';
-        else if (room?.biome === 'sublevel_red') surface = 'metal';
-        else if (room?.biome === 'archive') surface = 'tile';
-        AudioEngine.playFootstep(surface, isSprinting);
-      },
-      onOpenSettings: () => {
-        setIsSettingsOpen(true);
-      },
-      onToggleMinimap: () => {
-        setIsMinimapOpen((prev) => !prev);
-      },
-    });
-    controls.sensitivity = settings.mouseSensitivity;
-    controls.bobIntensity = settings.headBobIntensity;
-    controlsRef.current = controls;
-
-    const entity = new LiminalEntityAI(world.scene);
-    if (labyrinth.level === 0) {
-      // Level 0 Sanctuary is safe zone: entity completely dormant
-      entity.isActive = false;
-      entity.mesh.position.set(999, -999, 999);
-    } else {
-      // Spawn entity in far room with the selected difficulty
-      const farRoom = labyrinth.rooms[Math.floor(labyrinth.rooms.length / 2)];
-      entity.spawn(farRoom, world.roomSize, settings.difficulty);
-    }
-    entityRef.current = entity;
-
-    let lastTime = performance.now();
-
-    const gameLoop = (now: number) => {
-      const delta = Math.min((now - lastTime) / 1000, 0.1);
-      lastTime = now;
-
-      if (!isSettingsOpen) {
-        controls.update(delta, (pos) => world.isPositionValid(pos));
-        world.update(delta);
-        setBatteryLevel(world.batteryLevel);
-        setFlashlightOn(world.flashlightOn);
-
-        // Update player position and discovered rooms for Minimap
-        const px = world.camera.position.x;
-        const pz = world.camera.position.z;
-        const rx = Math.round(px / world.roomSize);
-        const rz = Math.round(pz / world.roomSize);
-        const roomKey = `${rx},${rz}`;
-        setVisitedRooms((prev) => {
-          if (!prev.has(roomKey)) {
-            const next = new Set(prev);
-            next.add(roomKey);
-            return next;
+      const controls = new FPSControls(world.camera, world.renderer.domElement, {
+        getGroundHeight: (x, z) => world.getGroundHeight(x, z),
+        onToggleFlashlight: () => {
+          const state = world.toggleFlashlight();
+          setFlashlightOn(state);
+        },
+        onInteract: () => {
+          handleInteractRef.current();
+        },
+        onFootstep: (isSprinting) => {
+          const rx = Math.round(world.camera.position.x / world.roomSize);
+          const rz = Math.round(world.camera.position.z / world.roomSize);
+          const lab = labyrinthRef.current;
+          const room = lab?.rooms.find((r) => r.x === rx && r.z === rz);
+          let surface: 'carpet' | 'tile' | 'water' | 'metal' = 'carpet';
+          if (room?.biome === 'poolroom') {
+            surface = 'water';
+            world.emitWaterRipple(world.camera.position.x, world.camera.position.z);
+          } else if (room?.biome === 'sublevel_red') {
+            surface = 'metal';
+          } else if (room?.biome === 'archive') {
+            surface = 'tile';
           }
-          return prev;
-        });
-        setPlayerPos({ x: px, z: pz });
+          AudioEngine.playFootstep(surface, isSprinting);
+        },
+        onOpenSettings: () => {
+          setIsSettingsOpen(true);
+        },
+        onToggleMinimap: () => {
+          setIsMinimapOpen((prev) => !prev);
+        },
+      });
+      controls.sensitivity = settings.mouseSensitivity;
+      controls.bobIntensity = settings.headBobIntensity;
+      controlsRef.current = controls;
 
-        // Calculate exact compass heading from 3D camera vector (North=0°, East=90°, South=180°, West=270°)
-        const camDir = new THREE.Vector3();
-        world.camera.getWorldDirection(camDir);
-        const headingDeg = Math.atan2(camDir.x, -camDir.z) * (180 / Math.PI);
-        setPlayerAngle(headingDeg);
-
-        const target = world.checkInteraction();
-        interactionTargetRef.current = target;
-        setInteractionTarget(target);
-
-        // Paranoia events and entity updates bypassed in Level 0 Sanctuary
-        if (labyrinth.level === 0) {
-          AudioEngine.updateProximityStatic(0);
-        } else {
-          // Random paranoia adrenaline heartbeat bursts (every 20 - 45s of solitude)
-          randomHeartbeatTimerRef.current -= delta;
-          if (randomHeartbeatTimerRef.current <= 0) {
-            randomHeartbeatTimerRef.current = 22 + Math.random() * 26;
-            AudioEngine.triggerParanoiaHeartbeatBurst(Math.floor(3 + Math.random() * 3));
-          }
-
-          entity.update(
-            delta,
-            world.camera.position,
-            world.flashlightOn,
-            controls.isSprinting,
-            () => {
-              controls.unlock();
-              setGameState('jumpscare');
-            }
-          );
-        }
+      const entity = new LiminalEntityAI(world.scene);
+      if (labyrinth.level === 0) {
+        entity.isActive = false;
+        entity.mesh.position.set(999, -999, 999);
+      } else {
+        const farRoom = labyrinth.rooms[Math.floor(labyrinth.rooms.length / 2)];
+        entity.spawn(farRoom, world.roomSize, settings.difficulty);
       }
+      entityRef.current = entity;
+
+      let lastTime = performance.now();
+
+      const gameLoop = (now: number) => {
+        const delta = Math.min((now - lastTime) / 1000, 0.1);
+        lastTime = now;
+
+        if (!isSettingsOpen) {
+          const currentLvl = currentLevelRef.current;
+          if (currentLvl === 2) {
+            controls.speedMultiplier = 0.65; // Slowness from wading in water
+          } else {
+            controls.speedMultiplier = 1.0;
+          }
+
+          controls.update(delta, (pos) => world.isPositionValid(pos));
+          world.update(delta);
+
+          const px = world.camera.position.x;
+          const pz = world.camera.position.z;
+          const rx = Math.round(px / world.roomSize);
+          const rz = Math.round(pz / world.roomSize);
+
+          // Update visited rooms only on room boundaries (avoids 60Hz React state queue spam)
+          if (rx !== lastRoomCoordsRef.current.rx || rz !== lastRoomCoordsRef.current.rz) {
+            lastRoomCoordsRef.current = { rx, rz };
+            const roomKey = `${rx},${rz}`;
+            setVisitedRooms((prev) => {
+              if (!prev.has(roomKey)) {
+                const next = new Set(prev);
+                next.add(roomKey);
+                return next;
+              }
+              return prev;
+            });
+          }
+
+          // Camera heading using zero-allocation scratch vector
+          world.camera.getWorldDirection(_scratchCamDir);
+          const headingDeg = Math.atan2(_scratchCamDir.x, -_scratchCamDir.z) * (180 / Math.PI);
+
+          // Throttled UI state updates (~12Hz / 80ms interval) for Minimap, Angle & Battery HUD
+          // Keeps React virtual DOM diffing minimal and preserves silky smooth 60 FPS WebGL thread
+          uiThrottleTimerRef.current += delta;
+          if (uiThrottleTimerRef.current >= 0.08) {
+            uiThrottleTimerRef.current = 0;
+            setPlayerPos({ x: px, z: pz });
+            setPlayerAngle(headingDeg);
+            setBatteryLevel(world.batteryLevel);
+            setFlashlightOn(world.flashlightOn);
+          }
+
+          // Selective Interaction Target Dispatch: only trigger re-render if target actually changed
+          const target = world.checkInteraction();
+          interactionTargetRef.current = target;
+          setInteractionTarget((prev) => {
+            if (!prev && !target) return prev;
+            if (
+              prev &&
+              target &&
+              prev.type === target.type &&
+              prev.prompt === target.prompt &&
+              prev.item?.id === target.item?.id
+            ) {
+              return prev;
+            }
+            return target;
+          });
+
+          if (labyrinth.level === 0) {
+            AudioEngine.updateProximityStatic(0);
+          } else {
+            randomHeartbeatTimerRef.current -= delta;
+            if (randomHeartbeatTimerRef.current <= 0) {
+              randomHeartbeatTimerRef.current = 22 + Math.random() * 26;
+              AudioEngine.triggerParanoiaHeartbeatBurst(Math.floor(3 + Math.random() * 3));
+            }
+
+            entity.update(
+              delta,
+              world.camera.position,
+              world.flashlightOn,
+              controls.isSprinting,
+              () => {
+                controls.unlock();
+                setGameState('jumpscare');
+              }
+            );
+          }
+        }
+
+        animFrameRef.current = requestAnimationFrame(gameLoop);
+      };
 
       animFrameRef.current = requestAnimationFrame(gameLoop);
-    };
+    } else {
+      // ponytail: level transition without recreating canvas/controls/webgl context
+      worldRef.current.loadLevel(labyrinth);
+      const spawnX = labyrinth.spawnRoom.x * worldRef.current.roomSize;
+      const spawnZ = labyrinth.spawnRoom.z * worldRef.current.roomSize;
+      const spawnY = worldRef.current.getGroundHeight(spawnX, spawnZ);
+      controlsRef.current?.resetPosition(new THREE.Vector3(spawnX, 1.6 + spawnY, spawnZ));
 
-    animFrameRef.current = requestAnimationFrame(gameLoop);
+      if (labyrinth.level === 0) {
+        if (entityRef.current) {
+          entityRef.current.isActive = false;
+          entityRef.current.mesh.position.set(999, -999, 999);
+        }
+      } else {
+        const farRoom = labyrinth.rooms[Math.floor(labyrinth.rooms.length / 2)];
+        entityRef.current?.spawn(farRoom, worldRef.current.roomSize, settings.difficulty);
+      }
+    }
 
     return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      controls.dispose();
-      world.dispose();
+      if (gameState !== 'playing') {
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+        controlsRef.current?.dispose();
+        controlsRef.current = null;
+        worldRef.current?.dispose();
+        worldRef.current = null;
+        entityRef.current = null;
+      }
     };
   }, [gameState, labyrinth]);
 
@@ -260,7 +360,9 @@ const GameContainer: React.FC = () => {
       AudioEngine.playPickup();
 
       if (count >= 3) {
-        triggerToast('ALL 3 REALITY ANCHORS SECURED // PROCEED TO EXIT AIRLOCK!', 6000);
+        triggerToast('ALL 3 REALITY ANCHORS SECURED! AIRLOCK UNSEALED // PROCEED TO EXIT!', 6000);
+      } else {
+        triggerToast(`REALITY ANCHOR RECOVERED // [${count}/3] SECURED`, 3500);
       }
 
       interactionTargetRef.current = null;
@@ -299,16 +401,19 @@ const GameContainer: React.FC = () => {
         setActiveInspectItem(null);
       }, 8500);
     } else if (target.type === 'exit') {
-      if (currentLevel === 0) {
+      const activeLvl = currentLevelRef.current;
+      if (activeLvl === 0) {
         // Direct transition from Level 0 Dreamcore Sanctuary to Level 1 Yellow Halls
         const nextLevel = 1;
         setCurrentLevel(nextLevel);
+        currentLevelRef.current = nextLevel;
         AudioEngine.setLevelAmbiance(nextLevel);
         AudioEngine.playDoor('open');
         triggerToast('STEPPED THROUGH THE THRESHOLD // ENTERING LEVEL 1: THE YELLOW HALLS...', 6000);
 
-        const currentSeed = labyrinth?.seed || 'LIMINAL-000000';
+        const currentSeed = labyrinthRef.current?.seed || 'LIMINAL-000000';
         const nextGen = LabyrinthGenerator.generate(currentSeed, nextLevel);
+        labyrinthRef.current = nextGen;
         setLabyrinth(nextGen);
 
         anchorsCollectedRef.current = 0;
@@ -323,11 +428,13 @@ const GameContainer: React.FC = () => {
         return;
       }
 
-      if (anchorsCollectedRef.current >= 3) {
-        if (currentLevel < 4) {
+      const collected = anchorsCollectedRef.current;
+      if (collected >= 3) {
+        if (activeLvl < 4) {
           // Advance to the Next Level!
-          const nextLevel = currentLevel + 1;
+          const nextLevel = activeLvl + 1;
           setCurrentLevel(nextLevel);
+          currentLevelRef.current = nextLevel;
           AudioEngine.setLevelAmbiance(nextLevel);
           AudioEngine.playDoor('open');
 
@@ -340,8 +447,9 @@ const GameContainer: React.FC = () => {
           triggerToast(`AIRLOCK BREACHED // DESCENDING INTO ${nextLevelNames[nextLevel - 1]}...`, 6000);
 
           // Generate next level layout
-          const currentSeed = labyrinth?.seed || 'LIMINAL-000000';
+          const currentSeed = labyrinthRef.current?.seed || 'LIMINAL-000000';
           const nextGen = LabyrinthGenerator.generate(currentSeed, nextLevel);
+          labyrinthRef.current = nextGen;
           setLabyrinth(nextGen);
 
           // Reset anchors for the new level
@@ -365,10 +473,11 @@ const GameContainer: React.FC = () => {
         }
       } else {
         // Non-blocking HUD toast alert: camera rotation is NEVER interrupted!
-        triggerToast(`AIRLOCK SEALED // 3 REALITY ANCHORS REQUIRED (${anchorsCollectedRef.current}/3)`);
+        triggerToast(`AIRLOCK SEALED // NEED ${3 - collected} MORE ANCHOR(S) (${collected}/3)`);
       }
     }
   };
+  handleInteractRef.current = handleInteract;
 
   const handleJumpscareComplete = () => {
     controlsRef.current?.unlock();
@@ -383,6 +492,11 @@ const GameContainer: React.FC = () => {
       {/* 3D WebGL Canvas Viewport */}
       <div
         ref={canvasContainerRef}
+        onClick={() => {
+          if (gameState === 'playing' && !isSettingsOpen && !controlsRef.current?.isLocked) {
+            controlsRef.current?.requestLock();
+          }
+        }}
         className={`w-full h-full ${
           gameState === 'playing' ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'
         }`}
@@ -454,9 +568,7 @@ const GameContainer: React.FC = () => {
         isOpen={isSettingsOpen}
         onClose={() => {
           setIsSettingsOpen(false);
-          setTimeout(() => {
-            canvasContainerRef.current?.requestPointerLock?.();
-          }, 40);
+          controlsRef.current?.requestLock();
         }}
         onRestart={() => {
           setIsSettingsOpen(false);
@@ -464,12 +576,18 @@ const GameContainer: React.FC = () => {
             handleStartGame(labyrinth.seed, currentLevel);
           }
         }}
+        onSwitchLevel={handleSwitchLevel}
         onMainMenu={() => {
           setIsSettingsOpen(false);
           controlsRef.current?.unlock();
+          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
           if (worldRef.current) {
             worldRef.current.dispose();
             worldRef.current = null;
+          }
+          if (controlsRef.current) {
+            controlsRef.current.dispose();
+            controlsRef.current = null;
           }
           setGameState('start');
         }}

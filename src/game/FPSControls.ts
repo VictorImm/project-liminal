@@ -19,6 +19,7 @@ export class FPSControls {
   public isCrouching: boolean = false;
   public sensitivity: number = 1.0;
   public bobIntensity: number = 0.4; // Anti-motion sickness: 0.0 = static horizon, 1.0 = subtle translational bob
+  public speedMultiplier: number = 1.0; // Dynamic terrain resistance (e.g. 0.65 for submerged poolrooms)
 
   private keys: { [key: string]: boolean } = {};
   private euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -30,6 +31,11 @@ export class FPSControls {
 
   // Touch controls for mobile
   private joystickMove: { x: number; y: number } = { x: 0, y: 0 };
+
+  // Zero-allocation reusable scratch vectors
+  private static readonly _moveDir = new THREE.Vector3();
+  private static readonly _targetPos = new THREE.Vector3();
+  private static readonly _slide = new THREE.Vector3();
 
   private onKeyDownBound: (e: KeyboardEvent) => void;
   private onKeyUpBound: (e: KeyboardEvent) => void;
@@ -82,16 +88,37 @@ export class FPSControls {
   }
 
   private onClick(e: MouseEvent) {
-    // Only request lock if not already locked and clicking directly on 3D canvas
-    if (!this.isLocked && document.pointerLockElement !== this.domElement) {
-      this.domElement.requestPointerLock?.();
-    } else if (this.isLocked && this.callbacks.onInteract) {
+    if (!this.isLocked) {
+      this.requestLock();
+    } else if (this.callbacks.onInteract) {
       this.callbacks.onInteract();
     }
   }
 
+  public requestLock() {
+    try {
+      (this.domElement.requestPointerLock as any)({ unadjustedMovement: true })?.catch?.(() => {
+        this.domElement.requestPointerLock?.();
+      });
+    } catch {
+      this.domElement.requestPointerLock?.();
+    }
+  }
+
   private onPointerLockChange() {
-    this.isLocked = document.pointerLockElement === this.domElement;
+    const lockEl = document.pointerLockElement;
+    // ponytail: match canvas, parent div, or any ancestor so movement never desyncs from hidden cursor
+    this.isLocked = Boolean(
+      lockEl && (lockEl === this.domElement || lockEl === this.domElement.parentElement || this.domElement.contains(lockEl) || lockEl.contains(this.domElement))
+    );
+  }
+
+  public resetPosition(newPos: THREE.Vector3, yawAngle: number = 0) {
+    this.position.copy(newPos);
+    this.camera.position.copy(newPos);
+    this.euler.set(0, yawAngle, 0, 'YXZ');
+    this.camera.quaternion.setFromEuler(this.euler);
+    this.velocity.set(0, 0, 0);
   }
 
   private onMouseMove(event: MouseEvent) {
@@ -139,8 +166,9 @@ export class FPSControls {
     let moveSpeed = 2.4;
     if (this.isSprinting) moveSpeed = 4.8;
     if (this.isCrouching) moveSpeed = 1.3;
+    moveSpeed *= this.speedMultiplier;
 
-    const moveDir = new THREE.Vector3();
+    const moveDir = FPSControls._moveDir.set(0, 0, 0);
     if (this.keys['KeyW'] || this.keys['ArrowUp']) moveDir.z -= 1;
     if (this.keys['KeyS'] || this.keys['ArrowDown']) moveDir.z += 1;
     if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveDir.x -= 1;
@@ -166,7 +194,7 @@ export class FPSControls {
       const deltaX = worldDirX * moveSpeed * delta;
       const deltaZ = worldDirZ * moveSpeed * delta;
 
-      const targetPos = this.position.clone();
+      const targetPos = FPSControls._targetPos.copy(this.position);
       targetPos.x += deltaX;
       targetPos.z += deltaZ;
 
@@ -174,15 +202,15 @@ export class FPSControls {
         this.position.x = targetPos.x;
         this.position.z = targetPos.z;
       } else {
-        const slideX = this.position.clone();
-        slideX.x += deltaX;
-        if (!collisionCheck || collisionCheck(slideX)) {
-          this.position.x = slideX.x;
+        const slide = FPSControls._slide.copy(this.position);
+        slide.x += deltaX;
+        if (!collisionCheck || collisionCheck(slide)) {
+          this.position.x = slide.x;
         } else {
-          const slideZ = this.position.clone();
-          slideZ.z += deltaZ;
-          if (!collisionCheck || collisionCheck(slideZ)) {
-            this.position.z = slideZ.z;
+          slide.copy(this.position);
+          slide.z += deltaZ;
+          if (!collisionCheck || collisionCheck(slide)) {
+            this.position.z = slide.z;
           }
         }
       }
@@ -191,8 +219,8 @@ export class FPSControls {
       this.stepDistance += dist;
 
       // Slower, deliberate stride rhythm ("pelan-pelan")
-      this.headBobTimer += delta * (this.isSprinting ? 7.0 : 4.6);
-      const stepThreshold = this.isSprinting ? 1.4 : 1.2;
+      this.headBobTimer += delta * (this.isSprinting ? 7.0 : 4.6) * Math.min(1.0, this.speedMultiplier + 0.15);
+      const stepThreshold = (this.isSprinting ? 1.4 : 1.2) * (this.speedMultiplier < 0.9 ? 0.72 : 1.0);
 
       if (this.stepDistance > stepThreshold) {
         this.stepDistance = 0;

@@ -27,6 +27,8 @@ export interface MapRoom {
   lightColor: string;
   pillarPositions?: [number, number][]; // for poolrooms
   artSeed?: number;
+  steamDensity?: number; // for Level 4 localized random fog density
+  hasSteamVent?: boolean; // for Level 4 steam vent props & audio
 }
 
 export interface GeneratedLabyrinth {
@@ -74,35 +76,37 @@ export class LabyrinthGenerator {
     if (currentLevel === 0) {
       const levelTitle = 'LEVEL 0 // DREAMCORE SANCTUARY';
       const activeRooms: Map<string, MapRoom> = new Map();
-      const gridW = 6;
-      const gridH = 6;
-      const spawnCoord = { x: 2, z: 2 };
-      const exitCoord = { x: 5, z: 5 };
+      const spawnCoord = { x: 1, z: 1 };
+      const exitCoord = { x: 4, z: 4 };
 
-      for (let x = 0; x < gridW; x++) {
-        for (let z = 0; z < gridH; z++) {
-          const doors: RoomDoor[] = [
-            { direction: 'north', isOpen: true },
-            { direction: 'south', isOpen: true },
-            { direction: 'east', isOpen: true },
-            { direction: 'west', isOpen: true },
-          ];
-          const room: MapRoom = {
-            x,
-            z,
-            biome: 'dreamcore',
-            doors,
-            items: [],
-            hasLightFlicker: false,
-            lightColor: '#f1f5f9',
-            artSeed: Math.floor(rng.next() * 10000),
-          };
-          activeRooms.set(`${x},${z}`, room);
-        }
-      }
+      // ponytail: sparse organic trail across rolling meadow instead of 36 solid tiles
+      const meadowPathCoords: [number, number][] = [
+        [1, 1], [1, 2], [2, 2], [2, 1], [3, 1],
+        [2, 3], [3, 2], [3, 3], [4, 2], [4, 3], [4, 4]
+      ];
+
+      meadowPathCoords.forEach(([x, z]) => {
+        const doors: RoomDoor[] = [
+          { direction: 'north', isOpen: true },
+          { direction: 'south', isOpen: true },
+          { direction: 'east', isOpen: true },
+          { direction: 'west', isOpen: true },
+        ];
+        const room: MapRoom = {
+          x,
+          z,
+          biome: 'dreamcore',
+          doors,
+          items: [],
+          hasLightFlicker: false,
+          lightColor: '#f1f5f9',
+          artSeed: Math.floor(rng.next() * 10000),
+        };
+        activeRooms.set(`${x},${z}`, room);
+      });
 
       // Add peaceful nostalgic dreamcore lore notes
-      const noteRoom1 = activeRooms.get('2,2');
+      const noteRoom1 = activeRooms.get('1,1');
       if (noteRoom1) {
         noteRoom1.items.push({
           id: 'note_dream_1',
@@ -110,13 +114,13 @@ export class LabyrinthGenerator {
           name: 'A Faded Childhood Postcard',
           description:
             'Wish you were here. The clouds never move, and nothing here can hurt you. When you are ready to venture into the unknown, find the solitary white doorway resting on the eastern hill.',
-          roomX: 2,
-          roomZ: 2,
+          roomX: 1,
+          roomZ: 1,
           localPos: [1.2, 0.4, 0.8],
         });
       }
 
-      const noteRoom2 = activeRooms.get('4,3');
+      const noteRoom2 = activeRooms.get('3,3');
       if (noteRoom2) {
         noteRoom2.items.push({
           id: 'note_dream_2',
@@ -124,9 +128,37 @@ export class LabyrinthGenerator {
           name: 'Weathered Journal Entry: 1997',
           description:
             'The air smells like warm rain and distant lilac. No 60Hz hum, no footsteps behind me. This is the sanctuary between worlds.',
-          roomX: 4,
+          roomX: 3,
           roomZ: 3,
           localPos: [-1.0, 0.4, -0.6],
+        });
+      }
+
+      const noteRoom3 = activeRooms.get('2,2');
+      if (noteRoom3) {
+        noteRoom3.items.push({
+          id: 'note_dream_3',
+          type: 'note',
+          name: 'Polaroid of the Playground (1995)',
+          description:
+            'The swings were still moving when we took the photo, but no one was sitting on them. It felt like someone had just left a second before.',
+          roomX: 2,
+          roomZ: 2,
+          localPos: [0.8, 0.4, 1.2],
+        });
+      }
+
+      const noteRoom4 = activeRooms.get('4,2');
+      if (noteRoom4) {
+        noteRoom4.items.push({
+          id: 'note_dream_4',
+          type: 'note',
+          name: 'Operator Transmission Note',
+          description:
+            'If the red telephone rings on the ridge, do not answer in a hurry. The voice on the line only remembers songs from before the threshold closed.',
+          roomX: 4,
+          roomZ: 2,
+          localPos: [-1.2, 0.4, 0.5],
         });
       }
 
@@ -161,7 +193,7 @@ export class LabyrinthGenerator {
     } else if (currentLevel === 3) {
       gridW = 6;
       gridH = 5;
-      targetRoomCount = 14;
+      targetRoomCount = 18;
       startCoord = { x: 0, z: 2 };
     } else if (currentLevel === 4) {
       gridW = 6;
@@ -172,12 +204,17 @@ export class LabyrinthGenerator {
 
     const visited = new Set<string>();
     const queue: [number, number][] = [[startCoord.x, startCoord.z]];
-    visited.add(`${startCoord.x},${startCoord.z}`);
+    const startKey = `${startCoord.x},${startCoord.z}`;
+    visited.add(startKey);
 
-    // Procedural room growth guided by level topology rules
+    const connectedEdges = new Set<string>();
+    const edgeKey = (a: string, b: string) => (a < b ? `${a}--${b}` : `${b}--${a}`);
+
+    // Procedural room growth guided by level topology rules (Spanning Tree)
     while (queue.length > 0 && visited.size < targetRoomCount) {
       const current = queue.shift()!;
       const [cx, cz] = current;
+      const cKey = `${cx},${cz}`;
 
       let neighbors: [number, number, 'north' | 'south' | 'east' | 'west'][] = [
         [cx, cz - 1, 'north'],
@@ -207,10 +244,70 @@ export class LabyrinthGenerator {
           const key = `${nx},${nz}`;
           if (!visited.has(key) && visited.size < targetRoomCount) {
             visited.add(key);
+            connectedEdges.add(edgeKey(cKey, key));
             queue.push([nx, nz]);
+          } else if (visited.has(key) && rng.next() < 0.22) {
+            // ponytail: add selective loop (~22% chance) for navigation variety without dissolving maze walls
+            connectedEdges.add(edgeKey(cKey, key));
           }
         }
       }
+    }
+
+    // Level 3 Endless Archives: Guarantee 100% interconnected looping corridors (ZERO dead ends)
+    if (currentLevel === 3) {
+      const getCoords = () =>
+        Array.from(visited).map((k) => {
+          const [x, z] = k.split(',').map(Number);
+          return { x, z, key: k };
+        });
+
+      // Pass 1: Connect adjacent visited cells to create dense loops
+      getCoords().forEach((coord) => {
+        const neighbors = [
+          { x: coord.x, z: coord.z - 1, key: `${coord.x},${coord.z - 1}` },
+          { x: coord.x, z: coord.z + 1, key: `${coord.x},${coord.z + 1}` },
+          { x: coord.x + 1, z: coord.z, key: `${coord.x + 1},${coord.z}` },
+          { x: coord.x - 1, z: coord.z, key: `${coord.x - 1},${coord.z}` },
+        ];
+        const eligible = neighbors.filter((n) => visited.has(n.key) && !connectedEdges.has(edgeKey(coord.key, n.key)));
+        eligible.forEach((e) => {
+          connectedEdges.add(edgeKey(coord.key, e.key));
+        });
+      });
+
+      // Pass 2: For any room at the perimeter that only has 1 door, bridge it to a neighbor to close the circuit
+      getCoords().forEach((coord) => {
+        const neighbors = [
+          { x: coord.x, z: coord.z - 1, key: `${coord.x},${coord.z - 1}` },
+          { x: coord.x, z: coord.z + 1, key: `${coord.x},${coord.z + 1}` },
+          { x: coord.x + 1, z: coord.z, key: `${coord.x + 1},${coord.z}` },
+          { x: coord.x - 1, z: coord.z, key: `${coord.x - 1},${coord.z}` },
+        ];
+        const currentDegree = neighbors.filter(
+          (n) => visited.has(n.key) && connectedEdges.has(edgeKey(coord.key, n.key))
+        ).length;
+
+        if (currentDegree <= 1) {
+          for (const cand of neighbors) {
+            if (cand.x >= 0 && cand.x < gridW && cand.z >= 0 && cand.z < gridH && !visited.has(cand.key)) {
+              const candNeighbors = [
+                { x: cand.x, z: cand.z - 1, key: `${cand.x},${cand.z - 1}` },
+                { x: cand.x, z: cand.z + 1, key: `${cand.x},${cand.z + 1}` },
+                { x: cand.x + 1, z: cand.z, key: `${cand.x + 1},${cand.z}` },
+                { x: cand.x - 1, z: cand.z, key: `${cand.x - 1},${cand.z}` },
+              ];
+              const otherVisited = candNeighbors.filter((cn) => cn.key !== coord.key && visited.has(cn.key));
+              if (otherVisited.length > 0) {
+                visited.add(cand.key);
+                connectedEdges.add(edgeKey(coord.key, cand.key));
+                connectedEdges.add(edgeKey(cand.key, otherVisited[0].key));
+                break;
+              }
+            }
+          }
+        }
+      });
     }
 
     const roomCoords = Array.from(visited).map((k) => {
@@ -257,8 +354,11 @@ export class LabyrinthGenerator {
         { dir: 'west', x: coord.x - 1, z: coord.z },
       ];
 
+      const cKey = `${coord.x},${coord.z}`;
       neighbors.forEach((n) => {
-        if (visited.has(`${n.x},${n.z}`)) {
+        const nKey = `${n.x},${n.z}`;
+        // ponytail: only create door if connected in maze graph; unconnected adjacent rooms get solid dividing walls
+        if (visited.has(nKey) && connectedEdges.has(edgeKey(cKey, nKey))) {
           doors.push({
             direction: n.dir,
             isOpen: false,
@@ -277,6 +377,20 @@ export class LabyrinthGenerator {
         lightColor,
         artSeed: Math.floor(rng.next() * 10000),
       };
+
+      if (currentLevel === 4 && biome !== 'exit_airlock') {
+        const steamRoll = rng.next();
+        if (steamRoll > 0.6) {
+          room.steamDensity = 0.135; // Dense industrial steam
+          room.hasSteamVent = true;
+        } else if (steamRoll > 0.3) {
+          room.steamDensity = 0.088; // Medium steam haze
+          room.hasSteamVent = false;
+        } else {
+          room.steamDensity = 0.052; // Thin maintenance haze
+          room.hasSteamVent = false;
+        }
+      }
 
       if (biome === 'poolroom') {
         room.pillarPositions = [

@@ -5,7 +5,7 @@
   pointer-events: none;
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 10;
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
               linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
   background-size: 100% 3px, 6px 100%;
@@ -21,12 +21,39 @@
   pointer-events: none;
   position: fixed;
   inset: 0;
-  z-index: 22;
+  z-index: 11;
   opacity: 0.06;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
 /* --- 1990s VHS TAPE & VCR CAMCORDER AESTHETIC STYLES --- */
+
+/* Full-Screen Phosphor Color Grading & Subtle CRT Glow */
+.vhs-color-grade {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: radial-gradient(circle at center, rgba(14, 28, 20, 0.03) 0%, rgba(8, 12, 18, 0.22) 100%);
+  mix-blend-mode: overlay;
+}
+
+/* Full-Screen Animated Magnetic Tape Noise & Static */
+.vhs-tape-noise {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  opacity: 0.085;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  animation: vhs-noise-shift 0.15s steps(2) infinite;
+}
+
+@keyframes vhs-noise-shift {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(-2px, 1px); }
+  100% { transform: translate(1px, -1px); }
+}
 
 /* Iconic VCR On-Screen Display (OSD) Text with Heavy Drop Shadow */
 .vhs-osd-text {
@@ -51,15 +78,15 @@
     2px 2px 1px #000000;
 }
 
-/* Ultra-Fine NTSC Interlaced Scanlines */
+/* Ultra-Fine NTSC Interlaced Scanlines (Full Screen) */
 .vhs-interlace-lines {
   pointer-events: none;
   position: fixed;
   inset: 0;
-  z-index: 20;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.22) 50%);
+  z-index: 12;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
   background-size: 100% 4px;
-  opacity: 0.55;
+  opacity: 0.65;
 }
 
 /* Authentic Bottom Head-Switching Noise Bar (Helical Tape Drum Noise) */
@@ -69,24 +96,24 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 18px;
-  z-index: 24;
+  height: 22px;
+  z-index: 14;
   background: repeating-linear-gradient(
     0deg,
-    rgba(255, 255, 255, 0.45) 0px,
-    rgba(255, 255, 255, 0.45) 1px,
-    rgba(180, 180, 180, 0.2) 2px,
+    rgba(255, 255, 255, 0.5) 0px,
+    rgba(255, 255, 255, 0.5) 1px,
+    rgba(180, 180, 180, 0.25) 2px,
     transparent 3px
   );
-  animation: vhs-head-switch 0.14s infinite steps(2);
-  opacity: 0.85;
+  animation: vhs-head-switch 0.12s infinite steps(2);
+  opacity: 0.9;
   mix-blend-mode: screen;
 }
 
 @keyframes vhs-head-switch {
-  0% { transform: translateY(0px) scaleX(1); opacity: 0.75; }
-  50% { transform: translateY(-1.5px) scaleX(1.015); opacity: 0.95; }
-  100% { transform: translateY(1px) scaleX(0.99); opacity: 0.8; }
+  0% { transform: translateY(0px) scaleX(1); opacity: 0.8; }
+  50% { transform: translateY(-1.5px) scaleX(1.015); opacity: 1; }
+  100% { transform: translateY(1px) scaleX(0.99); opacity: 0.85; }
 }
 
 /* Periodic VHS Magnetic Tracking Jitter Bar (Rolls down every ~10s) */
@@ -95,12 +122,34 @@
   position: fixed;
   left: 0;
   right: 0;
-  height: 16px;
-  z-index: 22;
-  background: rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(1.5px);
-  animation: vhs-tape-roll 11s infinite linear;
-  opacity: 0.45;
+  height: 22px;
+  z-index: 13;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(2px);
+  animation: vhs-tape-roll 10s infinite linear;
+  opacity: 0.5;
+}
+
+/* Subtle Periodic Horizontal Tape Glitch Line */
+.vhs-flutter-line {
+  pointer-events: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 13;
+  background: rgba(147, 197, 253, 0.35);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+  animation: vhs-flutter 8s infinite ease-in-out;
+  opacity: 0.4;
+}
+
+@keyframes vhs-flutter {
+  0%, 93% { top: -10px; opacity: 0; }
+  94% { top: 32%; opacity: 0.6; }
+  95% { top: 68%; opacity: 0.75; }
+  96% { top: 102%; opacity: 0; }
+  100% { top: 102%; opacity: 0; }
 }
 
 @keyframes vhs-tape-roll {

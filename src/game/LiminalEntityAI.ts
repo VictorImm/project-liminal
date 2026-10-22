@@ -18,6 +18,8 @@ export class LiminalEntityAI {
   private timeAlive: number = 0;
   private stalkSpeed: number = 0.8;
   private chargeSpeed: number = 3.8;
+  private isHumFlickering: boolean = false;
+  private static readonly _scratchDir = new THREE.Vector3();
 
   constructor(scene: THREE.Scene) {
     this.mesh = this.createEntityMesh();
@@ -68,23 +70,39 @@ export class LiminalEntityAI {
     this.timeAlive = 0;
 
     // Difficulty Tuning
+    this.applyDifficultyParameters();
+  }
+
+  public setDifficulty(diff: DifficultyLevel) {
+    this.difficulty = diff;
+    this.applyDifficultyParameters();
+  }
+
+  private applyDifficultyParameters() {
     if (this.difficulty === 'explorer') {
-      this.graceTimer = 999999; // Never hunts
+      this.graceTimer = 999999;
       this.stalkSpeed = 0;
       this.chargeSpeed = 0;
+      this.isActive = false;
+      this.mesh.position.set(999, -999, 999);
+      AudioEngine.updateProximityStatic(0);
+      AudioEngine.setHeartbeatActive(false);
     } else if (this.difficulty === 'easy') {
-      this.graceTimer = 65; // 65 seconds safe exploration period!
+      this.graceTimer = 65;
       this.stalkSpeed = 0.8;
       this.chargeSpeed = 3.6;
+      this.isActive = true;
     } else if (this.difficulty === 'normal') {
       this.graceTimer = 40;
       this.stalkSpeed = 1.3;
       this.chargeSpeed = 4.4;
+      this.isActive = true;
     } else {
       // Nightmare
       this.graceTimer = 18;
       this.stalkSpeed = 2.0;
       this.chargeSpeed = 5.4;
+      this.isActive = true;
     }
   }
 
@@ -138,15 +156,23 @@ export class LiminalEntityAI {
     if (this.distanceToPlayer < maxHearDist) {
       const intensity = 1.0 - this.distanceToPlayer / maxHearDist;
       AudioEngine.updateProximityStatic(intensity);
-      AudioEngine.setHumFlicker(this.distanceToPlayer < 10);
+      const shouldFlicker = this.distanceToPlayer < 10;
+      if (shouldFlicker !== this.isHumFlickering) {
+        this.isHumFlickering = shouldFlicker;
+        AudioEngine.setHumFlicker(shouldFlicker);
+      }
     } else {
       AudioEngine.updateProximityStatic(0);
+      if (this.isHumFlickering) {
+        this.isHumFlickering = false;
+        AudioEngine.setHumFlicker(false);
+      }
     }
 
     // Facing player
     this.mesh.lookAt(playerPos.x, this.mesh.position.y, playerPos.z);
 
-    const dir = new THREE.Vector3().subVectors(playerPos, this.position).normalize();
+    const dir = LiminalEntityAI._scratchDir.subVectors(playerPos, this.position).normalize();
 
     // Check if player is detected / triggers charge
     const chargeTriggerDist =
@@ -165,7 +191,7 @@ export class LiminalEntityAI {
       this.position.addScaledVector(dir, this.chargeSpeed * delta);
       this.mesh.position.copy(this.position);
 
-      // Captured player!
+      // Captured player! (Immortal in peaceful explorer mode guaranteed by line 115)
       if (this.distanceToPlayer < 1.4) {
         this.isActive = false;
         AudioEngine.setHeartbeatActive(false);
