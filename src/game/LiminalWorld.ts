@@ -522,19 +522,27 @@ export class LiminalWorld {
 
   // --- 100% PROCEDURAL DREAMCORE SANCTUARY (LEVEL 0 SAFE ZONE) ---
   private buildDreamcoreSanctuary(labyrinth: GeneratedLabyrinth) {
-    // 1. Nostalgic Pastel Atmosphere: Periwinkle / lavender dream sky & warm gentle mist
-    this.scene.background = new THREE.Color(0xa5b4fc);
-    this.scene.fog = new THREE.FogExp2(0xc7d2fe, 0.018);
+    // 1. Ultra-Bright Vivid Dreamcore Atmosphere: Cerulean blue sky & warm sunny mist
+    this.scene.background = new THREE.Color(0x38bdf8); // Vibrant nostalgic sky-blue
+    this.scene.fog = new THREE.FogExp2(0xbae6fd, 0.009); // Luminous airy pastel mist
 
-    // Warm, soothing dreamcore directional sunlight
-    const sun = new THREE.DirectionalLight(0xffedd5, 1.8);
-    sun.position.set(30, 45, 20);
+    // Warm brilliant directional sunlight
+    const sun = new THREE.DirectionalLight(0xfffbeb, 2.8);
+    sun.position.set(30, 48, 20);
     this.scene.add(sun);
 
-    const dreamAmbient = new THREE.AmbientLight(0xc4b5fd, 0.95);
+    // Radiant celestial ambient lighting
+    const dreamAmbient = new THREE.AmbientLight(0xffffff, 1.45);
     this.scene.add(dreamAmbient);
 
-    // 2. Elevated Continuous Rolling Meadow Terrain
+    // Vibrant sky & meadow bounce light (Studio Ghibli / Dreamcore lighting)
+    const hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x4ade80, 0.9);
+    this.scene.add(hemiLight);
+
+    // 2. Fluffy Puffy White Dream Clouds drifting in the sky
+    this.spawnDreamClouds();
+
+    // 3. Elevated Continuous Rolling Meadow Terrain
     const terrainSize = 90;
     const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 72, 72);
     terrainGeo.rotateX(-Math.PI / 2);
@@ -561,16 +569,16 @@ export class LiminalWorld {
     terrainMesh.userData = { surface: 'carpet' }; // soft grass footsteps
     this.scene.add(terrainMesh);
 
-    // 3. Solitary White Gateway Door on Eastern Summit Knoll
+    // 4. Solitary White Gateway Door on Eastern Summit Knoll
     const exitX = labyrinth.exitRoom.x * this.roomSize;
     const exitZ = labyrinth.exitRoom.z * this.roomSize;
     const exitGroundY = this.getGroundHeight(exitX, exitZ);
     this.buildDreamcoreGatewayDoor(exitX, exitZ, exitGroundY);
 
-    // 4. Surreal Dreamcore Props (Floating Monoliths, Doric Columns, Solitary Bench & Orb Lamp)
+    // 5. Surreal Dreamcore Props (Floating Monoliths, Doric Columns, Solitary Bench & Orb Lamp)
     this.spawnDreamcoreProps();
 
-    // 5. Spawn Lore Items (Nostalgic Postcards / Notes)
+    // 6. Spawn Lore Items (Nostalgic Postcards / Notes)
     labyrinth.rooms.forEach((room) => {
       const rx = room.x * this.roomSize;
       const rz = room.z * this.roomSize;
@@ -579,11 +587,60 @@ export class LiminalWorld {
       });
     });
 
-    // 6. Set Player Spawn on Elevated Ground in Starting Meadow
+    // 7. Set Player Spawn on Elevated Ground in Starting Meadow
     const spawnX = labyrinth.spawnRoom.x * this.roomSize;
     const spawnZ = labyrinth.spawnRoom.z * this.roomSize;
     const spawnY = this.getGroundHeight(spawnX, spawnZ);
     this.camera.position.set(spawnX, 1.6 + spawnY, spawnZ);
+  }
+
+  // Fluffy cartoon 3D clouds floating across the vibrant sky
+  private spawnDreamClouds() {
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.2,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.25,
+    });
+
+    const cloudPositions = [
+      { x: 5, y: 32, z: 10, scale: 3.5 },
+      { x: 25, y: 36, z: 2, scale: 4.2 },
+      { x: 45, y: 30, z: 15, scale: 3.8 },
+      { x: 12, y: 34, z: 32, scale: 3.0 },
+      { x: 38, y: 38, z: 36, scale: 4.5 },
+      { x: 20, y: 33, z: 50, scale: 3.6 },
+      { x: 50, y: 35, z: 52, scale: 4.0 },
+      { x: -5, y: 31, z: 25, scale: 3.4 },
+    ];
+
+    cloudPositions.forEach((cp, idx) => {
+      const cloudGroup = new THREE.Group();
+      cloudGroup.position.set(cp.x, cp.y, cp.z);
+
+      const offsets = [
+        [0, 0, 0, 1.0],
+        [-0.8, -0.2, 0.2, 0.75],
+        [0.85, -0.15, -0.1, 0.8],
+        [0.2, 0.45, 0.1, 0.65],
+      ];
+
+      offsets.forEach(([ox, oy, oz, r]) => {
+        const sphere = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(r * cp.scale, 2),
+          cloudMat
+        );
+        sphere.position.set(ox * cp.scale, oy * cp.scale, oz * cp.scale);
+        cloudGroup.add(sphere);
+      });
+
+      cloudGroup.userData = {
+        isDreamCloud: true,
+        baseX: cp.x,
+        speed: 0.2 + (idx % 3) * 0.1,
+      };
+      this.scene.add(cloudGroup);
+    });
   }
 
   private buildDreamcoreGatewayDoor(rx: number, rz: number, groundY: number) {
@@ -753,6 +810,72 @@ export class LiminalWorld {
     const globeLight = new THREE.PointLight(0xfef08a, 1.4, 12.0, 1.5);
     globeLight.position.set(benchCenter.x + 1.8, benchGround + 3.6, benchCenter.z);
     this.scene.add(globeLight);
+
+    // 4. Nostalgic Surreal Rainbow Arch (Classic Dreamcore Playground Element)
+    const archCenter = { x: 26, z: 38 };
+    const archGround = this.getGroundHeight(archCenter.x, archCenter.z);
+    const rainbowColors = [0xef4444, 0xf97316, 0xfacc15, 0x22c55e, 0x06b6d4, 0x8b5cf6];
+
+    rainbowColors.forEach((col, idx) => {
+      const radius = 3.6 - idx * 0.22;
+      const archGeo = new THREE.TorusGeometry(radius, 0.1, 8, 32, Math.PI);
+      const archMat = new THREE.MeshStandardMaterial({
+        color: col,
+        emissive: col,
+        emissiveIntensity: 0.45,
+        roughness: 0.25,
+      });
+      const archMesh = new THREE.Mesh(archGeo, archMat);
+      archMesh.position.set(archCenter.x, archGround + 0.1, archCenter.z);
+      this.scene.add(archMesh);
+    });
+
+    // 5. Floating Colorful Dream Balloons
+    const balloonColors = [0xf43f5e, 0xfacc15, 0x06b6d4, 0xa855f7, 0x22c55e, 0xfb7185, 0x38bdf8];
+    const balloonCoords = [
+      { x: 14, z: 20, h: 3.2 },
+      { x: 15, z: 21, h: 4.1 },
+      { x: 30, z: 16, h: 3.8 },
+      { x: 31, z: 15, h: 4.5 },
+      { x: 24, z: 30, h: 3.5 },
+      { x: 38, z: 32, h: 4.0 },
+      { x: 44, z: 42, h: 3.6 },
+    ];
+
+    balloonCoords.forEach((b, idx) => {
+      const bGround = this.getGroundHeight(b.x, b.z);
+      const col = balloonColors[idx % balloonColors.length];
+      const balloonGroup = new THREE.Group();
+      balloonGroup.position.set(b.x, bGround, b.z);
+
+      // Glossy oval balloon
+      const balloonGeo = new THREE.SphereGeometry(0.35, 16, 16);
+      balloonGeo.scale(1.0, 1.25, 1.0);
+      const balloonMat = new THREE.MeshStandardMaterial({
+        color: col,
+        emissive: col,
+        emissiveIntensity: 0.35,
+        roughness: 0.15,
+      });
+      const balloon = new THREE.Mesh(balloonGeo, balloonMat);
+      balloon.position.y = b.h;
+      balloonGroup.add(balloon);
+
+      // Thin white string anchored to meadow grass
+      const stringGeo = new THREE.CylinderGeometry(0.008, 0.008, b.h, 4);
+      const stringMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const stringMesh = new THREE.Mesh(stringGeo, stringMat);
+      stringMesh.position.y = b.h / 2;
+      balloonGroup.add(stringMesh);
+
+      balloonGroup.userData = {
+        isDreamBalloon: true,
+        baseY: bGround,
+        liftH: b.h,
+        phase: idx * 1.1,
+      };
+      this.scene.add(balloonGroup);
+    });
   }
 
   private buildWall(
@@ -1137,7 +1260,7 @@ export class LiminalWorld {
       });
     });
 
-    // Floating monolith rotation & slow bobbing in Dreamcore
+    // Floating monolith rotation, cloud drift & balloon sway in Dreamcore
     if (this.currentLevel === 0) {
       const timeSec = performance.now() * 0.001;
       this.scene.traverse((obj) => {
@@ -1145,6 +1268,14 @@ export class LiminalWorld {
           obj.rotation.x += delta * (obj.userData.rotSpeed * 0.5);
           obj.rotation.y += delta * obj.userData.rotSpeed;
           obj.position.y = obj.userData.baseY + Math.sin(timeSec * 0.8 + obj.userData.bobPhase) * 0.35;
+        } else if (obj.userData?.isDreamCloud) {
+          obj.position.x += delta * obj.userData.speed;
+          if (obj.position.x > 75) {
+            obj.position.x = -25;
+          }
+        } else if (obj.userData?.isDreamBalloon) {
+          obj.position.y = obj.userData.baseY + Math.sin(timeSec * 1.5 + obj.userData.phase) * 0.18;
+          obj.rotation.z = Math.sin(timeSec * 1.2 + obj.userData.phase) * 0.08;
         }
       });
     }

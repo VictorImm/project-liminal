@@ -536,40 +536,66 @@ export class TextureGenerator {
     return tex;
   }
 
-  // Level 0 Dreamcore: Lush Soft Meadow Grass with Pastel Flower Specks
+  // Level 0 Dreamcore: Ultra-Vibrant Colorful Rolling Meadow Grass with Multicolored Flowers
   static createDreamcoreGrassTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    // Soft dreamy vibrant lime-green base
+    // Rich saturated sunny lime-green meadow base (Windows Bliss / Studio Ghibli style)
     const grad = ctx.createLinearGradient(0, 0, 512, 512);
-    grad.addColorStop(0, '#3ba85b');
-    grad.addColorStop(0.5, '#48b868');
-    grad.addColorStop(1, '#349b52');
+    grad.addColorStop(0, '#38c558');
+    grad.addColorStop(0.35, '#4ade80');
+    grad.addColorStop(0.7, '#22c55e');
+    grad.addColorStop(1, '#16a34a');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 512);
 
-    // Soft tufts / organic blade mottling
-    for (let i = 0; i < 4000; i++) {
+    // Sunlit bright grass blades & clover patches
+    for (let i = 0; i < 5000; i++) {
       const gx = Math.random() * 512;
       const gy = Math.random() * 512;
-      const gh = Math.random() * 8 + 4;
-      const hue = Math.random() > 0.5 ? '#5ccf7c' : '#2d8c47';
-      ctx.fillStyle = hue;
+      const gh = Math.random() * 10 + 4;
+      const hues = ['#86efac', '#4ade80', '#22c55e', '#a7f3d0', '#6ee7b7'];
+      ctx.fillStyle = hues[Math.floor(Math.random() * hues.length)];
       ctx.fillRect(gx, gy, 2, gh);
     }
 
-    // Tiny nostalgic surreal wildflower specks (dreamcore aesthetic)
-    const flowerColors = ['#fef08a', '#e9d5ff', '#fce7f3', '#fed7aa', '#ffffff'];
-    for (let i = 0; i < 280; i++) {
+    // Abundant Multicolored Surreal Wildflowers (Poppies, Buttercups, Forget-me-nots, Daisies, Lilacs)
+    const petalPalettes = [
+      { petal: '#f43f5e', center: '#fef08a' }, // Hot Pink Poppy
+      { petal: '#fb7185', center: '#ffffff' }, // Rose Pink
+      { petal: '#facc15', center: '#ca8a04' }, // Sunburst Buttercup
+      { petal: '#38bdf8', center: '#fef08a' }, // Sky Blue Forget-me-not
+      { petal: '#06b6d4', center: '#ffffff' }, // Turquoise
+      { petal: '#a855f7', center: '#fde047' }, // Purple Violet
+      { petal: '#c084fc', center: '#ffffff' }, // Lavender
+      { petal: '#ffffff', center: '#eab308' }, // Chamomile Daisy
+      { petal: '#f97316', center: '#fef08a' }, // Bright Marigold
+    ];
+
+    for (let i = 0; i < 480; i++) {
       const fx = Math.random() * 512;
       const fy = Math.random() * 512;
-      const radius = Math.random() * 2 + 1.5;
-      ctx.fillStyle = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      const choice = petalPalettes[Math.floor(Math.random() * petalPalettes.length)];
+      const radius = Math.random() * 2.5 + 2.0;
+
+      // Draw 4-5 petals
+      ctx.fillStyle = choice.petal;
+      for (let p = 0; p < 5; p++) {
+        const angle = (p * Math.PI * 2) / 5;
+        const px = fx + Math.cos(angle) * radius;
+        const py = fy + Math.sin(angle) * radius;
+        ctx.beginPath();
+        ctx.arc(px, py, radius * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Bright flower center dot
+      ctx.fillStyle = choice.center;
       ctx.beginPath();
-      ctx.arc(fx, fy, radius, 0, Math.PI * 2);
+      ctx.arc(fx, fy, radius * 0.55, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -579,7 +605,7 @@ export class TextureGenerator {
     return tex;
   }
 
-  // Level 0 Dreamcore: Surreal Floating Monolith Checkered Motif
+  // Level 0 Dreamcore: Vivid Surreal Checkerboard with Iridescent Accents
   static createCheckeredDreamTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -590,21 +616,15 @@ export class TextureGenerator {
     for (let x = 0; x < 512; x += tileSize) {
       for (let y = 0; y < 512; y += tileSize) {
         const isDark = ((x / tileSize) + (y / tileSize)) % 2 === 0;
-        ctx.fillStyle = isDark ? '#1e1b4b' : '#f8fafc';
+        ctx.fillStyle = isDark ? '#312e81' : '#ffffff';
         ctx.fillRect(x, y, tileSize, tileSize);
+
+        // Vibrant pastel perimeter glow line on each tile
+        ctx.strokeStyle = isDark ? '#4338ca' : '#e0e7ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
       }
     }
-
-    // Subtle surreal iridescent noise overlay
-    const imgData = ctx.getImageData(0, 0, 512, 512);
-    const data = imgData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const tint = (Math.random() - 0.5) * 15;
-      data[i] = Math.max(0, Math.min(255, data[i] + tint));
-      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + tint));
-      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + tint * 1.5));
-    }
-    ctx.putImageData(imgData, 0, 0);
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
