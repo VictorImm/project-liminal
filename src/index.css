@@ -26,6 +26,99 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
+/* --- 1990s VHS TAPE & VCR CAMCORDER AESTHETIC STYLES --- */
+
+/* Iconic VCR On-Screen Display (OSD) Text with Heavy Drop Shadow */
+.vhs-osd-text {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: 0.12em;
+  text-shadow:
+    2px 2px 0px #000000,
+    -1px -1px 0px #000000,
+    1px -1px 0px #000000,
+    -1px 1px 0px #000000,
+    2px 0px 0px #000000,
+    0px 2px 0px #000000;
+}
+
+/* Subtle NTSC RGB Color Bleed / Chromatic Fringing */
+.vhs-chromatic-text {
+  text-shadow:
+    -1.5px 0px 0px rgba(239, 68, 68, 0.75),
+    1.5px 0px 0px rgba(56, 189, 248, 0.75),
+    2px 2px 1px #000000;
+}
+
+/* Ultra-Fine NTSC Interlaced Scanlines */
+.vhs-interlace-lines {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.22) 50%);
+  background-size: 100% 4px;
+  opacity: 0.55;
+}
+
+/* Authentic Bottom Head-Switching Noise Bar (Helical Tape Drum Noise) */
+.vhs-tracking-noise-bar {
+  pointer-events: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 18px;
+  z-index: 24;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.45) 0px,
+    rgba(255, 255, 255, 0.45) 1px,
+    rgba(180, 180, 180, 0.2) 2px,
+    transparent 3px
+  );
+  animation: vhs-head-switch 0.14s infinite steps(2);
+  opacity: 0.85;
+  mix-blend-mode: screen;
+}
+
+@keyframes vhs-head-switch {
+  0% { transform: translateY(0px) scaleX(1); opacity: 0.75; }
+  50% { transform: translateY(-1.5px) scaleX(1.015); opacity: 0.95; }
+  100% { transform: translateY(1px) scaleX(0.99); opacity: 0.8; }
+}
+
+/* Periodic VHS Magnetic Tracking Jitter Bar (Rolls down every ~10s) */
+.vhs-roll-bar {
+  pointer-events: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 16px;
+  z-index: 22;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(1.5px);
+  animation: vhs-tape-roll 11s infinite linear;
+  opacity: 0.45;
+}
+
+@keyframes vhs-tape-roll {
+  0% { transform: translateY(-100%); }
+  9% { transform: translateY(105vh); }
+  100% { transform: translateY(105vh); }
+}
+
+/* Blinking REC Dot Animation */
+@keyframes vhs-rec-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.2; }
+}
+
+.animate-vhs-rec {
+  animation: vhs-rec-blink 1.2s infinite;
+}
+
 /* Utility Animations */
 @keyframes flicker {
   0% { opacity: 0.97; }

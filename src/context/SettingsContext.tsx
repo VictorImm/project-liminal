@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export type DifficultyLevel = 'explorer' | 'easy' | 'normal' | 'nightmare';
 
+export type VHSIntensity = 'full' | 'subtle' | 'off';
+
 export interface GameSettings {
   enableJumpscares: boolean;
   difficulty: DifficultyLevel;
@@ -9,6 +11,7 @@ export interface GameSettings {
   mouseSensitivity: number;
   enableCRTShader: boolean;
   headBobIntensity: number; // 0.0 (Off / Anti-Motion Sickness) to 1.0 (Gentle Translational Bob)
+  vhsIntensity: VHSIntensity; // 1990s VHS Tape & VCR Camcorder Aesthetic
 }
 
 interface SettingsContextType {
@@ -24,6 +27,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   mouseSensitivity: 1.0,
   enableCRTShader: true,
   headBobIntensity: 0.4, // Default to gentle, anti-motion sickness level
+  vhsIntensity: 'full', // Default to full authentic VHS tape feel
 };
 
 const STORAGE_KEY = 'liminal_drift_settings_v2';

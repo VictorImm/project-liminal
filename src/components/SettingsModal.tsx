@@ -14,6 +14,7 @@ import {
   Flame,
   AlertTriangle,
   Activity,
+  Video,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -383,6 +384,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
               <p className="text-[10px] text-zinc-500">
                 Purely translational subtle displacement (zero rotation/tilt). Set to 0 to completely freeze camera horizon.
+              </p>
+            </div>
+
+            {/* 1990s VHS TAPE AESTHETIC */}
+            <div className="space-y-1.5 border border-zinc-800/80 p-2.5 bg-zinc-900/50 rounded-lg">
+              <div className="flex justify-between items-center text-xs font-semibold">
+                <span className="flex items-center gap-1.5 text-zinc-300 text-[11px] uppercase tracking-wider">
+                  <Video className="w-3.5 h-3.5 text-amber-400" />
+                  <span>1990s VHS Tape / VCR Camcorder</span>
+                </span>
+                <span className="text-amber-400 font-mono text-[11px] uppercase">
+                  {settings.vhsIntensity || 'FULL'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1 pt-1">
+                {(['full', 'subtle', 'off'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => updateSettings({ vhsIntensity: mode })}
+                    className={`py-1 text-[11px] font-bold rounded uppercase tracking-wider transition-colors cursor-pointer border ${
+                      settings.vhsIntensity === mode
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-300'
+                        : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-zinc-500">
+                Otentik VCR OSD (PLAY/PAUSE/REC), timecode counter, helical tracking noise bar, dan RGB bleed.
               </p>
             </div>
 

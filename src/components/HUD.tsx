@@ -12,6 +12,7 @@ interface HUDProps {
   activeInspectItem: WorldItem | null;
   hudToast: string | null;
   levelTitle?: string;
+  vhsActive?: boolean;
   onCloseInspect: () => void;
   onOpenSettings: () => void;
   onToggleFlashlight: () => void;
@@ -29,6 +30,7 @@ export const HUD: React.FC<HUDProps> = ({
   activeInspectItem,
   hudToast,
   levelTitle,
+  vhsActive = true,
   onCloseInspect,
   onOpenSettings,
   onToggleFlashlight,
@@ -71,18 +73,22 @@ export const HUD: React.FC<HUDProps> = ({
     >
       {/* TOP BAR */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-        {/* VHS Timestamp & Status */}
-        <div className="bg-black/60 border border-zinc-800 p-2.5 rounded backdrop-blur-sm text-xs space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
-            <span className="text-zinc-200 font-bold tracking-wider">REC ● CAM_01</span>
+        {/* VHS Timestamp & Status (Rendered if VHS overlay is off) */}
+        {!vhsActive ? (
+          <div className="bg-black/60 border border-zinc-800 p-2.5 rounded backdrop-blur-sm text-xs space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
+              <span className="text-zinc-200 font-bold tracking-wider">REC ● CAM_01</span>
+            </div>
+            <div className="text-zinc-400 font-mono uppercase">{levelTitle || 'SECTOR_0 // LIMINAL THRESHOLD'}</div>
           </div>
-          <div className="text-zinc-400 font-mono uppercase">{levelTitle || 'SECTOR_0 // LIMINAL THRESHOLD'}</div>
-        </div>
+        ) : (
+          <div className="w-32" /> /* Spacer so top center anchors align beautifully */
+        )}
 
         {/* Reality Anchors or Sanctuary Safe Zone Indicator */}
         {totalAnchors > 0 ? (
-          <div className="bg-black/60 border border-cyan-900/80 p-2.5 rounded backdrop-blur-sm text-xs">
+          <div className="bg-black/75 border border-cyan-800/80 p-2.5 rounded backdrop-blur-sm text-xs shadow-lg">
             <div className="text-cyan-400 font-bold uppercase tracking-wider mb-1">
               Reality Anchors: {anchorsCollected} / {totalAnchors}
             </div>
@@ -100,7 +106,7 @@ export const HUD: React.FC<HUDProps> = ({
             </div>
           </div>
         ) : (
-          <div className="bg-black/60 border border-emerald-500/60 p-2.5 rounded backdrop-blur-sm text-xs">
+          <div className="bg-black/75 border border-emerald-500/60 p-2.5 rounded backdrop-blur-sm text-xs shadow-lg">
             <div className="text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               SANCTUARY // SAFE ZONE

@@ -12,6 +12,7 @@ import { StartScreen } from './components/StartScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { JumpscareModal } from './components/JumpscareModal';
 import { GameOverScreen } from './components/GameOverScreen';
+import { VHSOsdOverlay } from './components/VHSOsdOverlay';
 
 type GameState = 'start' | 'playing' | 'jumpscare' | 'gameover';
 
@@ -398,6 +399,15 @@ const GameContainer: React.FC = () => {
       {/* Start Screen */}
       {gameState === 'start' && <StartScreen onStartGame={handleStartGame} />}
 
+      {/* 1990s VHS Tape / VCR Camcorder OSD & Tracking Overlay */}
+      {gameState === 'playing' && (
+        <VHSOsdOverlay
+          isPaused={isSettingsOpen}
+          intensity={settings.vhsIntensity || 'full'}
+          levelTitle={labyrinth?.levelTitle}
+        />
+      )}
+
       {/* In-Game HUD */}
       {gameState === 'playing' && (
         <>
@@ -409,6 +419,7 @@ const GameContainer: React.FC = () => {
             interactionTarget={interactionTarget}
             activeInspectItem={activeInspectItem}
             hudToast={hudToast}
+            vhsActive={settings.vhsIntensity !== 'off'}
             onCloseInspect={() => setActiveInspectItem(null)}
             onOpenSettings={() => {
               controlsRef.current?.unlock();
