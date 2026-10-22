@@ -1,0 +1,230 @@
+import React, { useState } from 'react';
+import { InteractionTarget } from '../game/LiminalWorld';
+import { WorldItem } from '../procedural/LabyrinthGenerator';
+import { Battery, BatteryCharging, BatteryWarning, Flashlight, Settings, Hand, X } from 'lucide-react';
+
+interface HUDProps {
+  batteryLevel: number;
+  flashlightOn: boolean;
+  anchorsCollected: number;
+  totalAnchors: number;
+  interactionTarget: InteractionTarget | null;
+  activeInspectItem: WorldItem | null;
+  hudToast: string | null;
+  levelTitle?: string;
+  onCloseInspect: () => void;
+  onOpenSettings: () => void;
+  onToggleFlashlight: () => void;
+  onInteract: () => void;
+  onJoystickMove?: (x: number, y: number) => void;
+  onTouchLook?: (dx: number, dy: number) => void;
+}
+
+export const HUD: React.FC<HUDProps> = ({
+  batteryLevel,
+  flashlightOn,
+  anchorsCollected,
+  totalAnchors,
+  interactionTarget,
+  activeInspectItem,
+  hudToast,
+  levelTitle,
+  onCloseInspect,
+  onOpenSettings,
+  onToggleFlashlight,
+  onInteract,
+  onJoystickMove,
+  onTouchLook,
+}) => {
+  const [touchActive, setTouchActive] = useState(false);
+  const [lastTouch, setLastTouch] = useState<{ x: number; y: number } | null>(null);
+
+  // Mobile Right Screen Touch Look
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (touch.clientX > window.innerWidth / 2) {
+      setLastTouch({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!lastTouch || !onTouchLook) return;
+    const touch = e.touches[0];
+    if (touch.clientX > window.innerWidth / 2) {
+      const dx = touch.clientX - lastTouch.x;
+      const dy = touch.clientY - lastTouch.y;
+      onTouchLook(dx, dy);
+      setLastTouch({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setLastTouch(null);
+  };
+
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-30 select-none font-mono"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* TOP BAR */}
+      <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+        {/* VHS Timestamp & Status */}
+        <div className="bg-black/60 border border-zinc-800 p-2.5 rounded backdrop-blur-sm text-xs space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
+            <span className="text-zinc-200 font-bold tracking-wider">REC ● CAM_01</span>
+          </div>
+          <div className="text-zinc-400 font-mono uppercase">{levelTitle || 'SECTOR_0 // LIMINAL THRESHOLD'}</div>
+        </div>
+
+        {/* Reality Anchors Indicator */}
+        <div className="bg-black/60 border border-cyan-900/80 p-2.5 rounded backdrop-blur-sm text-xs">
+          <div className="text-cyan-400 font-bold uppercase tracking-wider mb-1">
+            Reality Anchors: {anchorsCollected} / {totalAnchors}
+          </div>
+          <div className="flex gap-2">
+            {Array.from({ length: totalAnchors }).map((_, i) => (
+              <span
+                key={i}
+                className={`inline-block w-4 h-4 border ${
+                  i < anchorsCollected
+                    ? 'bg-cyan-400 border-cyan-300 shadow-[0_0_8px_rgba(0,255,255,0.8)]'
+                    : 'border-zinc-700 bg-zinc-900/50'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Flashlight Battery & Settings Button */}
+        <div className="flex items-center gap-3">
+          <div className="bg-black/60 border border-zinc-800 p-2.5 rounded backdrop-blur-sm flex items-center gap-2 text-xs">
+            <Flashlight className={`w-4 h-4 ${flashlightOn ? 'text-amber-400' : 'text-zinc-600'}`} />
+            <div className="w-20 bg-zinc-800 h-2 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  batteryLevel < 20 ? 'bg-red-500 animate-pulse' : 'bg-amber-400'
+                }`}
+                style={{ width: `${batteryLevel}%` }}
+              />
+            </div>
+            <span className="font-bold text-zinc-300 w-8 text-right">
+              {Math.round(batteryLevel)}%
+            </span>
+          </div>
+
+          <button
+            onClick={onOpenSettings}
+            className="pointer-events-auto bg-black/70 hover:bg-zinc-800 border border-zinc-700 p-2 rounded text-zinc-300 hover:text-white transition-colors"
+            title="Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* CENTER CROSSHAIR & INTERACTION PROMPT */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        {/* Reticle Dot */}
+        <div
+          className={`w-2 h-2 rounded-full transition-all duration-150 ${
+            interactionTarget
+              ? 'scale-150 bg-cyan-400 shadow-[0_0_10px_rgba(0,255,255,1)]'
+              : 'bg-zinc-400/70'
+          }`}
+        />
+
+        {/* Interactive Prompt Banner */}
+        {interactionTarget && (
+          <div className="mt-6 px-4 py-1.5 bg-black/85 border border-cyan-500/80 text-cyan-300 text-xs tracking-wider uppercase font-bold shadow-lg animate-fade-in backdrop-blur-sm">
+            {interactionTarget.prompt}
+          </div>
+        )}
+      </div>
+
+      {/* HUD TOAST NOTIFICATION (Non-blocking: Camera rotation remains active) */}
+      {hudToast && (
+        <div className="pointer-events-none absolute top-20 left-1/2 -translate-x-1/2 px-4 py-2 bg-red-950/90 border border-red-500 text-red-200 text-xs font-bold tracking-widest uppercase shadow-2xl backdrop-blur-md animate-pulse">
+          {hudToast}
+        </div>
+      )}
+
+      {/* SEAMLESS DIEGETIC TRANSCRIPT / LOGS (Non-blocking: 100% Seamless Exploration) */}
+      {activeInspectItem && (
+        <div className="pointer-events-none absolute bottom-16 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 animate-fade-in">
+          <div className="bg-black/90 border border-amber-500/80 p-4 shadow-2xl backdrop-blur-md text-left">
+            <div className="flex items-center justify-between border-b border-amber-900/60 pb-1.5 mb-2 text-xs font-bold text-amber-400 uppercase tracking-widest">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                <span>COMMUNICATION // {activeInspectItem.name}</span>
+              </div>
+              <span className="text-[10px] text-zinc-400">[RECORDING]</span>
+            </div>
+            <p className="text-xs text-zinc-200 leading-relaxed font-mono whitespace-pre-wrap">
+              "{activeInspectItem.description}"
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE CONTROLS (Only visible on touch devices) */}
+      <div className="pointer-events-auto md:hidden absolute bottom-6 left-6 right-6 flex justify-between items-end">
+        {/* Virtual D-pad / Move buttons */}
+        <div className="grid grid-cols-3 gap-2 w-32 h-32">
+          <div />
+          <button
+            onPointerDown={() => onJoystickMove?.(0, -1)}
+            onPointerUp={() => onJoystickMove?.(0, 0)}
+            className="bg-black/60 active:bg-zinc-700 border border-zinc-700 rounded text-center text-xs text-zinc-300 font-bold py-2"
+          >
+            ▲
+          </button>
+          <div />
+          <button
+            onPointerDown={() => onJoystickMove?.(-1, 0)}
+            onPointerUp={() => onJoystickMove?.(0, 0)}
+            className="bg-black/60 active:bg-zinc-700 border border-zinc-700 rounded text-center text-xs text-zinc-300 font-bold py-2"
+          >
+            ◀
+          </button>
+          <div />
+          <button
+            onPointerDown={() => onJoystickMove?.(1, 0)}
+            onPointerUp={() => onJoystickMove?.(0, 0)}
+            className="bg-black/60 active:bg-zinc-700 border border-zinc-700 rounded text-center text-xs text-zinc-300 font-bold py-2"
+          >
+            ▶
+          </button>
+          <div />
+          <button
+            onPointerDown={() => onJoystickMove?.(0, 1)}
+            onPointerUp={() => onJoystickMove?.(0, 0)}
+            className="bg-black/60 active:bg-zinc-700 border border-zinc-700 rounded text-center text-xs text-zinc-300 font-bold py-2"
+          >
+            ▼
+          </button>
+          <div />
+        </div>
+
+        {/* Action Buttons: Flashlight & Interact */}
+        <div className="flex gap-3">
+          <button
+            onClick={onToggleFlashlight}
+            className="w-14 h-14 rounded-full bg-black/70 active:bg-amber-600 border border-amber-600/80 flex items-center justify-center text-amber-400 shadow-lg"
+          >
+            <Flashlight className="w-6 h-6" />
+          </button>
+          <button
+            onClick={onInteract}
+            className="w-14 h-14 rounded-full bg-black/70 active:bg-cyan-600 border border-cyan-500/80 flex items-center justify-center text-cyan-300 shadow-lg"
+          >
+            <Hand className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

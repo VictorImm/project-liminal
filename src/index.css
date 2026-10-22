@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* Analog Horror CRT Scanline and Vignette Styles */
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+              linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  background-size: 100% 3px, 6px 100%;
+}
+
+.crt-vignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85), inset 0 0 180px rgba(0, 0, 0, 0.95);
+}
+
+/* Subtle Film Grain Noise */
+.film-grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 22;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Utility Animations */
+@keyframes flicker {
+  0% { opacity: 0.97; }
+  50% { opacity: 1; }
+  52% { opacity: 0.92; }
+  54% { opacity: 1; }
+  80% { opacity: 0.96; }
+  100% { opacity: 1; }
+}
+
+.animate-flicker {
+  animation: flicker 0.15s infinite;
+}
