@@ -535,4 +535,80 @@ export class TextureGenerator {
     const tex = new THREE.CanvasTexture(canvas);
     return tex;
   }
+
+  // Level 0 Dreamcore: Lush Soft Meadow Grass with Pastel Flower Specks
+  static createDreamcoreGrassTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    // Soft dreamy vibrant lime-green base
+    const grad = ctx.createLinearGradient(0, 0, 512, 512);
+    grad.addColorStop(0, '#3ba85b');
+    grad.addColorStop(0.5, '#48b868');
+    grad.addColorStop(1, '#349b52');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Soft tufts / organic blade mottling
+    for (let i = 0; i < 4000; i++) {
+      const gx = Math.random() * 512;
+      const gy = Math.random() * 512;
+      const gh = Math.random() * 8 + 4;
+      const hue = Math.random() > 0.5 ? '#5ccf7c' : '#2d8c47';
+      ctx.fillStyle = hue;
+      ctx.fillRect(gx, gy, 2, gh);
+    }
+
+    // Tiny nostalgic surreal wildflower specks (dreamcore aesthetic)
+    const flowerColors = ['#fef08a', '#e9d5ff', '#fce7f3', '#fed7aa', '#ffffff'];
+    for (let i = 0; i < 280; i++) {
+      const fx = Math.random() * 512;
+      const fy = Math.random() * 512;
+      const radius = Math.random() * 2 + 1.5;
+      ctx.fillStyle = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      ctx.beginPath();
+      ctx.arc(fx, fy, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  // Level 0 Dreamcore: Surreal Floating Monolith Checkered Motif
+  static createCheckeredDreamTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    const tileSize = 64;
+    for (let x = 0; x < 512; x += tileSize) {
+      for (let y = 0; y < 512; y += tileSize) {
+        const isDark = ((x / tileSize) + (y / tileSize)) % 2 === 0;
+        ctx.fillStyle = isDark ? '#1e1b4b' : '#f8fafc';
+        ctx.fillRect(x, y, tileSize, tileSize);
+      }
+    }
+
+    // Subtle surreal iridescent noise overlay
+    const imgData = ctx.getImageData(0, 0, 512, 512);
+    const data = imgData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const tint = (Math.random() - 0.5) * 15;
+      data[i] = Math.max(0, Math.min(255, data[i] + tint));
+      data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + tint));
+      data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + tint * 1.5));
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
 }

@@ -80,24 +80,36 @@ export const HUD: React.FC<HUDProps> = ({
           <div className="text-zinc-400 font-mono uppercase">{levelTitle || 'SECTOR_0 // LIMINAL THRESHOLD'}</div>
         </div>
 
-        {/* Reality Anchors Indicator */}
-        <div className="bg-black/60 border border-cyan-900/80 p-2.5 rounded backdrop-blur-sm text-xs">
-          <div className="text-cyan-400 font-bold uppercase tracking-wider mb-1">
-            Reality Anchors: {anchorsCollected} / {totalAnchors}
+        {/* Reality Anchors or Sanctuary Safe Zone Indicator */}
+        {totalAnchors > 0 ? (
+          <div className="bg-black/60 border border-cyan-900/80 p-2.5 rounded backdrop-blur-sm text-xs">
+            <div className="text-cyan-400 font-bold uppercase tracking-wider mb-1">
+              Reality Anchors: {anchorsCollected} / {totalAnchors}
+            </div>
+            <div className="flex gap-2">
+              {Array.from({ length: totalAnchors }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`inline-block w-4 h-4 border ${
+                    i < anchorsCollected
+                      ? 'bg-cyan-400 border-cyan-300 shadow-[0_0_8px_rgba(0,255,255,0.8)]'
+                      : 'border-zinc-700 bg-zinc-900/50'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2">
-            {Array.from({ length: totalAnchors }).map((_, i) => (
-              <span
-                key={i}
-                className={`inline-block w-4 h-4 border ${
-                  i < anchorsCollected
-                    ? 'bg-cyan-400 border-cyan-300 shadow-[0_0_8px_rgba(0,255,255,0.8)]'
-                    : 'border-zinc-700 bg-zinc-900/50'
-                }`}
-              />
-            ))}
+        ) : (
+          <div className="bg-black/60 border border-emerald-500/60 p-2.5 rounded backdrop-blur-sm text-xs">
+            <div className="text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              SANCTUARY // SAFE ZONE
+            </div>
+            <div className="text-emerald-300/80 text-[10px] mt-0.5">
+              PEACEFUL MEADOW • NO THREAT
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Flashlight Battery & Settings Button */}
         <div className="flex items-center gap-3">

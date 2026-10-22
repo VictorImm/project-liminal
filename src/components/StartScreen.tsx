@@ -72,6 +72,15 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
 
   const levelOptions = [
     {
+      lv: 0,
+      title: 'DREAM SANCTUARY',
+      sub: 'Peaceful Meadow',
+      icon: Sparkles,
+      accent: 'border-emerald-500/80 text-emerald-400 bg-emerald-500/10',
+      badge: 'emerald',
+      desc: 'Nostalgic pastel sky, undulating meadow, peaceful sanctuary.',
+    },
+    {
       lv: 1,
       title: 'THE YELLOW HALLS',
       sub: 'Mono-Yellow Backrooms',
@@ -82,7 +91,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
     },
     {
       lv: 2,
-      title: 'SUBLIMITY POOLROOMS',
+      title: 'SUBLIMITY POOLS',
       sub: 'Flooded Aqueducts',
       icon: Droplets,
       accent: 'border-cyan-500/80 text-cyan-400 bg-cyan-500/10',
@@ -100,8 +109,8 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
     },
     {
       lv: 4,
-      title: 'MACHINE SUB-LEVEL',
-      sub: 'Industrial Boiler Core',
+      title: 'MACHINE SUB-CORE',
+      sub: 'Boiler & Steam Core',
       icon: Cog,
       accent: 'border-red-500/80 text-red-400 bg-red-500/10',
       badge: 'red',
@@ -116,7 +125,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-72 bg-gradient-to-b from-amber-500/15 via-transparent to-transparent rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Terminal Card Container */}
-      <div className="relative w-full max-w-xl my-auto border border-zinc-800/90 bg-zinc-950/90 rounded-2xl shadow-[0_30px_70px_-20px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl p-6 md:p-8 text-left">
+      <div className="relative w-full max-w-2xl my-auto border border-zinc-800/90 bg-zinc-950/90 rounded-2xl shadow-[0_30px_70px_-20px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl p-6 md:p-8 text-left">
         {/* Terminal Header */}
         <div className="border-b border-zinc-800/80 pb-4 mb-5">
           <div className="flex justify-between items-center text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mb-1.5">
@@ -137,7 +146,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
           </p>
         </div>
 
-        {/* 1. LEVEL SELECTOR CARDS (4 DEDICATED THEMES) */}
+        {/* 1. LEVEL SELECTOR CARDS (5 DEDICATED THEMES) */}
         <div className="space-y-2 mb-5">
           <div className="flex justify-between items-center text-xs font-semibold text-zinc-300">
             <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-zinc-400">
@@ -149,7 +158,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
             {levelOptions.map((item) => {
               const IconComp = item.icon;
               const isSelected = selectedLevel === item.lv;

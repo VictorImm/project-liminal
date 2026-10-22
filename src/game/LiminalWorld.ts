@@ -46,6 +46,8 @@ export class LiminalWorld {
     submergedPoolFloor: THREE.CanvasTexture;
     cofferedCeiling: THREE.CanvasTexture;
     corrugatedCeiling: THREE.CanvasTexture;
+    dreamGrass: THREE.CanvasTexture;
+    checkeredDream: THREE.CanvasTexture;
   };
 
   constructor(container: HTMLElement) {
@@ -62,7 +64,7 @@ export class LiminalWorld {
     this.renderer.shadowMap.type = THREE.BasicShadowMap;
     container.appendChild(this.renderer.domElement);
 
-    // Procedural Textures - 4 Dedicated Level Texture Packs (Zero Repetition)
+    // Procedural Textures - 5 Dedicated Level Texture Packs (Zero Repetition)
     this.textures = {
       yellowWall: TextureGenerator.createYellowWallpaperTexture(),
       poolTile: TextureGenerator.createPoolTileTexture(),
@@ -79,6 +81,8 @@ export class LiminalWorld {
       submergedPoolFloor: TextureGenerator.createSubmergedPoolFloorTexture(),
       cofferedCeiling: TextureGenerator.createCofferedCeilingTexture(),
       corrugatedCeiling: TextureGenerator.createCorrugatedCeilingTexture(),
+      dreamGrass: TextureGenerator.createDreamcoreGrassTexture(),
+      checkeredDream: TextureGenerator.createCheckeredDreamTexture(),
     };
 
     // Survival Horror Flashlight (Deep beam + localized fill)
@@ -126,8 +130,26 @@ export class LiminalWorld {
     }
   }
 
+  public getGroundHeight(x: number, z: number): number {
+    if (this.currentLevel === 0) {
+      // Nostalgic dreamcore rolling hills and scenic knolls
+      const h1 = Math.sin(x * 0.08) * Math.cos(z * 0.08) * 2.2;
+      const h2 = Math.sin(x * 0.16 + z * 0.12) * 0.8;
+      const h3 = Math.cos(x * 0.04 - z * 0.05) * 1.0;
+      return h1 + h2 + h3;
+    }
+    return 0;
+  }
+
   public buildLabyrinth(labyrinth: GeneratedLabyrinth) {
     this.currentLevel = labyrinth.level;
+
+    // --- LEVEL 0 // DREAMCORE SANCTUARY (PEACEFUL OPEN MEADOW & SAFE ZONE) ---
+    if (labyrinth.level === 0) {
+      this.buildDreamcoreSanctuary(labyrinth);
+      return;
+    }
+
     const half = this.roomSize / 2;
 
     // Distinct Volumetric Liminal Fog & Lighting per Level
@@ -498,6 +520,241 @@ export class LiminalWorld {
     this.camera.position.set(spawnX, 1.6, spawnZ);
   }
 
+  // --- 100% PROCEDURAL DREAMCORE SANCTUARY (LEVEL 0 SAFE ZONE) ---
+  private buildDreamcoreSanctuary(labyrinth: GeneratedLabyrinth) {
+    // 1. Nostalgic Pastel Atmosphere: Periwinkle / lavender dream sky & warm gentle mist
+    this.scene.background = new THREE.Color(0xa5b4fc);
+    this.scene.fog = new THREE.FogExp2(0xc7d2fe, 0.018);
+
+    // Warm, soothing dreamcore directional sunlight
+    const sun = new THREE.DirectionalLight(0xffedd5, 1.8);
+    sun.position.set(30, 45, 20);
+    this.scene.add(sun);
+
+    const dreamAmbient = new THREE.AmbientLight(0xc4b5fd, 0.95);
+    this.scene.add(dreamAmbient);
+
+    // 2. Elevated Continuous Rolling Meadow Terrain
+    const terrainSize = 90;
+    const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 72, 72);
+    terrainGeo.rotateX(-Math.PI / 2);
+    // Center terrain over the 6x6 room expanse (x: 0 to 50, z: 0 to 50 -> center 25, 25)
+    terrainGeo.translate(25, 0, 25);
+
+    const pos = terrainGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const vx = pos.getX(i);
+      const vz = pos.getZ(i);
+      pos.setY(i, this.getGroundHeight(vx, vz));
+    }
+    terrainGeo.computeVertexNormals();
+
+    const grassTex = this.textures.dreamGrass;
+    grassTex.repeat.set(16, 16);
+    const terrainMat = new THREE.MeshStandardMaterial({
+      map: grassTex,
+      roughness: 0.85,
+      metalness: 0.05,
+    });
+    const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+    terrainMesh.receiveShadow = true;
+    terrainMesh.userData = { surface: 'carpet' }; // soft grass footsteps
+    this.scene.add(terrainMesh);
+
+    // 3. Solitary White Gateway Door on Eastern Summit Knoll
+    const exitX = labyrinth.exitRoom.x * this.roomSize;
+    const exitZ = labyrinth.exitRoom.z * this.roomSize;
+    const exitGroundY = this.getGroundHeight(exitX, exitZ);
+    this.buildDreamcoreGatewayDoor(exitX, exitZ, exitGroundY);
+
+    // 4. Surreal Dreamcore Props (Floating Monoliths, Doric Columns, Solitary Bench & Orb Lamp)
+    this.spawnDreamcoreProps();
+
+    // 5. Spawn Lore Items (Nostalgic Postcards / Notes)
+    labyrinth.rooms.forEach((room) => {
+      const rx = room.x * this.roomSize;
+      const rz = room.z * this.roomSize;
+      room.items.forEach((item) => {
+        this.spawnItemMesh(item, rx, rz);
+      });
+    });
+
+    // 6. Set Player Spawn on Elevated Ground in Starting Meadow
+    const spawnX = labyrinth.spawnRoom.x * this.roomSize;
+    const spawnZ = labyrinth.spawnRoom.z * this.roomSize;
+    const spawnY = this.getGroundHeight(spawnX, spawnZ);
+    this.camera.position.set(spawnX, 1.6 + spawnY, spawnZ);
+  }
+
+  private buildDreamcoreGatewayDoor(rx: number, rz: number, groundY: number) {
+    const group = new THREE.Group();
+    group.position.set(rx, groundY, rz);
+
+    // Stepped Checkered Pedestal Base
+    const stepMat = new THREE.MeshStandardMaterial({
+      map: this.textures.checkeredDream,
+      roughness: 0.4,
+    });
+    const step1 = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.25, 4.2), stepMat);
+    step1.position.set(0, 0.125, 0);
+    group.add(step1);
+    this.wallColliders.push(new THREE.Box3().setFromObject(step1).translate(new THREE.Vector3(rx, groundY, rz)));
+
+    const step2 = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.25, 3.2), stepMat);
+    step2.position.set(0, 0.375, 0);
+    group.add(step2);
+
+    // Solitary White Door Frame
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.25,
+    });
+    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.4, 0.28), frameMat);
+    doorFrame.position.set(0, 2.05, 0);
+    group.add(doorFrame);
+
+    // Glowing Ethereal Portal Panel (Gateway to Level 1)
+    const portalMat = new THREE.MeshBasicMaterial({
+      color: 0xfffcf0,
+      side: THREE.DoubleSide,
+    });
+    const portal = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 3.0), portalMat);
+    portal.position.set(0, 1.95, 0.01);
+    group.add(portal);
+
+    // Soft warm threshold halo
+    const portalGlow = new THREE.PointLight(0xfef08a, 2.2, 8.5);
+    portalGlow.position.set(0, 2.0, 0.6);
+    group.add(portalGlow);
+
+    // Brass Doorknob
+    const knobMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 });
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), knobMat);
+    knob.position.set(0.7, 1.8, 0.16);
+    group.add(knob);
+
+    // Ethereal Header Plaque: "THE THRESHOLD"
+    const plaqueGeo = new THREE.BoxGeometry(1.8, 0.35, 0.12);
+    const plaqueMat = new THREE.MeshStandardMaterial({ color: 0x312e81, roughness: 0.3 });
+    const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);
+    plaque.position.set(0, 3.55, 0.12);
+    group.add(plaque);
+
+    // Generous Interaction Hitbox
+    const hitBox = new THREE.Mesh(
+      new THREE.BoxGeometry(4.5, 4.0, 4.5),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    hitBox.position.set(0, 2.0, 0);
+    hitBox.userData = { isExitGate: true };
+    group.add(hitBox);
+
+    group.userData = { isExitGate: true };
+    this.scene.add(group);
+    this.exitGateMesh = group;
+    this.interactables.push(group);
+  }
+
+  private spawnDreamcoreProps() {
+    // 1. Floating Geometric Monoliths & Checkered Obelisks
+    const monolithCoords = [
+      { x: 12, z: 14, h: 5.5, s: [1.8, 1.8, 1.8], r: 0.4 },
+      { x: 28, z: 10, h: 6.8, s: [1.4, 3.2, 1.4], r: -0.6 },
+      { x: 42, z: 18, h: 6.0, s: [2.0, 2.0, 2.0], r: 0.8 },
+      { x: 16, z: 36, h: 7.5, s: [1.2, 3.8, 1.2], r: 1.2 },
+      { x: 36, z: 38, h: 5.6, s: [2.2, 1.4, 2.2], r: -0.3 },
+      { x: 10, z: 46, h: 6.2, s: [1.6, 1.6, 1.6], r: 0.5 },
+    ];
+
+    const monolithMat = new THREE.MeshStandardMaterial({
+      map: this.textures.checkeredDream,
+      roughness: 0.35,
+      metalness: 0.15,
+    });
+
+    monolithCoords.forEach((m, idx) => {
+      const geo = new THREE.BoxGeometry(m.s[0], m.s[1], m.s[2]);
+      const mesh = new THREE.Mesh(geo, monolithMat);
+      const groundAtM = this.getGroundHeight(m.x, m.z);
+      mesh.position.set(m.x, groundAtM + m.h, m.z);
+      mesh.rotation.set(m.r, m.r * 1.2, m.r * 0.8);
+      mesh.userData = {
+        isFloatingMonolith: true,
+        baseY: groundAtM + m.h,
+        rotSpeed: 0.25 + (idx % 3) * 0.15,
+        bobPhase: idx * 1.2,
+      };
+      this.scene.add(mesh);
+    });
+
+    // 2. Classical White Doric Columns (Surreal Temple Ruins on a Hill)
+    const pillarMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.4,
+    });
+    const columnCenter = { x: 32, z: 24 };
+    const columnGround = this.getGroundHeight(columnCenter.x, columnCenter.z);
+    const colOffsets = [
+      [-3, -2], [0, -2], [3, -2],
+      [-3, 2], [0, 2], [3, 2],
+    ];
+
+    colOffsets.forEach(([ox, oz]) => {
+      const colGeo = new THREE.CylinderGeometry(0.35, 0.4, 4.2, 16);
+      const col = new THREE.Mesh(colGeo, pillarMat);
+      col.position.set(columnCenter.x + ox, columnGround + 2.1, columnCenter.z + oz);
+      this.scene.add(col);
+      this.wallColliders.push(new THREE.Box3().setFromObject(col));
+    });
+
+    // Architrave lintel beams across columns
+    const beamGeo = new THREE.BoxGeometry(7.2, 0.4, 0.9);
+    const beam1 = new THREE.Mesh(beamGeo, pillarMat);
+    beam1.position.set(columnCenter.x, columnGround + 4.3, columnCenter.z - 2);
+    this.scene.add(beam1);
+    const beam2 = new THREE.Mesh(beamGeo, pillarMat);
+    beam2.position.set(columnCenter.x, columnGround + 4.3, columnCenter.z + 2);
+    this.scene.add(beam2);
+
+    // 3. Solitary Wooden Bench & Vintage Streetlamp on rolling crest
+    const benchCenter = { x: 18, z: 24 };
+    const benchGround = this.getGroundHeight(benchCenter.x, benchCenter.z);
+
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.8 });
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1f2421, metalness: 0.8, roughness: 0.3 });
+
+    const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.1, 0.6), woodMat);
+    benchSeat.position.set(benchCenter.x, benchGround + 0.45, benchCenter.z);
+    this.scene.add(benchSeat);
+
+    const benchBack = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.6, 0.08), woodMat);
+    benchBack.position.set(benchCenter.x, benchGround + 0.8, benchCenter.z - 0.28);
+    this.scene.add(benchBack);
+    this.wallColliders.push(new THREE.Box3().setFromObject(benchSeat));
+
+    // Vintage Streetlamp with glowing warm globe
+    const lampPost = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 3.6, 8), ironMat);
+    lampPost.position.set(benchCenter.x + 1.8, benchGround + 1.8, benchCenter.z);
+    this.scene.add(lampPost);
+    this.wallColliders.push(new THREE.Box3().setFromObject(lampPost));
+
+    const globe = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 16, 16),
+      new THREE.MeshStandardMaterial({
+        color: 0xffedd5,
+        emissive: 0xfef08a,
+        emissiveIntensity: 2.2,
+        roughness: 0.2,
+      })
+    );
+    globe.position.set(benchCenter.x + 1.8, benchGround + 3.6, benchCenter.z);
+    this.scene.add(globe);
+
+    const globeLight = new THREE.PointLight(0xfef08a, 1.4, 12.0, 1.5);
+    globeLight.position.set(benchCenter.x + 1.8, benchGround + 3.6, benchCenter.z);
+    this.scene.add(globeLight);
+  }
+
   private buildWall(
     rx: number,
     rz: number,
@@ -605,7 +862,8 @@ export class LiminalWorld {
   private spawnItemMesh(item: WorldItem, rx: number, rz: number) {
     const itemGroup = new THREE.Group();
     const [lx, ly, lz] = item.localPos;
-    itemGroup.position.set(rx + lx, ly, rz + lz);
+    const groundY = this.currentLevel === 0 ? this.getGroundHeight(rx + lx, rz + lz) : 0;
+    itemGroup.position.set(rx + lx, groundY + ly, rz + lz);
 
     if (item.type === 'anchor') {
       // Ornate floating pedestal with glowing crystal / relic
@@ -804,6 +1062,9 @@ export class LiminalWorld {
           return { type: item.type, item, prompt };
         }
       } else if (topObj && (topObj.userData.isExitGate || topObj.parent?.userData.isExitGate)) {
+        if (this.currentLevel === 0) {
+          return { type: 'exit', prompt: `[E] Enter The Threshold (Level 1)` };
+        }
         return { type: 'exit', prompt: `[E] Escape Airlock` };
       }
     }
@@ -823,10 +1084,16 @@ export class LiminalWorld {
   }
 
   public isPositionValid(pos: THREE.Vector3): boolean {
+    if (this.currentLevel === 0) {
+      // Keep player inside the peaceful rolling dream meadow boundary
+      if (pos.x < -4 || pos.x > 54 || pos.z < -4 || pos.z > 54) {
+        return false;
+      }
+    }
     const playerRadius = 0.35;
     const playerBox = new THREE.Box3(
-      new THREE.Vector3(pos.x - playerRadius, 0.1, pos.z - playerRadius),
-      new THREE.Vector3(pos.x + playerRadius, this.roomHeight - 0.2, pos.z + playerRadius)
+      new THREE.Vector3(pos.x - playerRadius, pos.y - 1.2, pos.z - playerRadius),
+      new THREE.Vector3(pos.x + playerRadius, pos.y + 0.2, pos.z + playerRadius)
     );
 
     for (const collider of this.wallColliders) {
@@ -838,8 +1105,12 @@ export class LiminalWorld {
   }
 
   public update(delta: number) {
-    // Battery drain
-    if (this.flashlightOn) {
+    // Battery drain (Level 0 Sanctuary has infinite battery / safe zone)
+    if (this.currentLevel === 0) {
+      this.batteryLevel = 100;
+      this.flashlightOn = true;
+      this.flashlight.intensity = 4.5;
+    } else if (this.flashlightOn) {
       this.batteryLevel = Math.max(0, this.batteryLevel - delta * 1.1); // ~90 sec battery
       if (this.batteryLevel <= 0) {
         this.flashlightOn = false;
@@ -855,7 +1126,6 @@ export class LiminalWorld {
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
     this.flashlightTarget.position.copy(this.camera.position).add(forward);
 
-
     // Floating item animations (Reality Anchors)
     const time = Date.now() * 0.003;
     this.interactables.forEach((obj) => {
@@ -866,6 +1136,18 @@ export class LiminalWorld {
         }
       });
     });
+
+    // Floating monolith rotation & slow bobbing in Dreamcore
+    if (this.currentLevel === 0) {
+      const timeSec = performance.now() * 0.001;
+      this.scene.traverse((obj) => {
+        if (obj.userData?.isFloatingMonolith) {
+          obj.rotation.x += delta * (obj.userData.rotSpeed * 0.5);
+          obj.rotation.y += delta * obj.userData.rotSpeed;
+          obj.position.y = obj.userData.baseY + Math.sin(timeSec * 0.8 + obj.userData.bobPhase) * 0.35;
+        }
+      });
+    }
 
     // Flickering ceiling lights
     this.ceilingLights.forEach((cl) => {

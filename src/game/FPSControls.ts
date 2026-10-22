@@ -6,6 +6,7 @@ export interface ControlCallbacks {
   onFootstep?: (isSprinting: boolean) => void;
   onOpenSettings?: () => void;
   onToggleMinimap?: () => void;
+  getGroundHeight?: (x: number, z: number) => number;
 }
 
 export class FPSControls {
@@ -227,10 +228,11 @@ export class FPSControls {
     );
     this.camera.quaternion.setFromEuler(composedEuler);
 
-    // Vertical height bobbing
-    const targetHeight = this.isCrouching ? 0.9 : this.baseHeight;
+    // Vertical height bobbing & dynamic terrain elevation tracking
+    const groundY = this.callbacks.getGroundHeight ? this.callbacks.getGroundHeight(this.camera.position.x, this.camera.position.z) : 0;
+    const targetHeight = (this.isCrouching ? 0.9 : this.baseHeight) + groundY;
     const bobOffset = isMoving ? Math.sin(this.headBobTimer) * (this.isSprinting ? 0.05 : 0.024) : 0;
-    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetHeight + bobOffset, 0.15);
+    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetHeight + bobOffset, 0.18);
   }
 
   public dispose() {

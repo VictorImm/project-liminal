@@ -87,7 +87,7 @@ const GameContainer: React.FC = () => {
     AudioEngine.init();
     AudioEngine.resumeContext();
 
-    const chosenLevel = Math.max(1, Math.min(4, startLevel));
+    const chosenLevel = Math.max(0, Math.min(4, startLevel));
     setCurrentLevel(chosenLevel);
     AudioEngine.setLevelAmbiance(chosenLevel);
 
@@ -127,6 +127,7 @@ const GameContainer: React.FC = () => {
     worldRef.current = world;
 
     const controls = new FPSControls(world.camera, world.renderer.domElement, {
+      getGroundHeight: (x, z) => world.getGroundHeight(x, z),
       onToggleFlashlight: () => {
         const state = world.toggleFlashlight();
         setFlashlightOn(state);
@@ -156,9 +157,15 @@ const GameContainer: React.FC = () => {
     controlsRef.current = controls;
 
     const entity = new LiminalEntityAI(world.scene);
-    // Spawn entity in far room with the selected difficulty
-    const farRoom = labyrinth.rooms[Math.floor(labyrinth.rooms.length / 2)];
-    entity.spawn(farRoom, world.roomSize, settings.difficulty);
+    if (labyrinth.level === 0) {
+      // Level 0 Sanctuary is safe zone: entity completely dormant
+      entity.isActive = false;
+      entity.mesh.position.set(999, -999, 999);
+    } else {
+      // Spawn entity in far room with the selected difficulty
+      const farRoom = labyrinth.rooms[Math.floor(labyrinth.rooms.length / 2)];
+      entity.spawn(farRoom, world.roomSize, settings.difficulty);
+    }
     entityRef.current = entity;
 
     let lastTime = performance.now();
@@ -199,23 +206,28 @@ const GameContainer: React.FC = () => {
         interactionTargetRef.current = target;
         setInteractionTarget(target);
 
-        // Random paranoia adrenaline heartbeat bursts (every 20 - 45s of solitude)
-        randomHeartbeatTimerRef.current -= delta;
-        if (randomHeartbeatTimerRef.current <= 0) {
-          randomHeartbeatTimerRef.current = 22 + Math.random() * 26;
-          AudioEngine.triggerParanoiaHeartbeatBurst(Math.floor(3 + Math.random() * 3));
-        }
-
-        entity.update(
-          delta,
-          world.camera.position,
-          world.flashlightOn,
-          controls.isSprinting,
-          () => {
-            controls.unlock();
-            setGameState('jumpscare');
+        // Paranoia events and entity updates bypassed in Level 0 Sanctuary
+        if (labyrinth.level === 0) {
+          AudioEngine.updateProximityStatic(0);
+        } else {
+          // Random paranoia adrenaline heartbeat bursts (every 20 - 45s of solitude)
+          randomHeartbeatTimerRef.current -= delta;
+          if (randomHeartbeatTimerRef.current <= 0) {
+            randomHeartbeatTimerRef.current = 22 + Math.random() * 26;
+            AudioEngine.triggerParanoiaHeartbeatBurst(Math.floor(3 + Math.random() * 3));
           }
-        );
+
+          entity.update(
+            delta,
+            world.camera.position,
+            world.flashlightOn,
+            controls.isSprinting,
+            () => {
+              controls.unlock();
+              setGameState('jumpscare');
+            }
+          );
+        }
       }
 
       animFrameRef.current = requestAnimationFrame(gameLoop);
@@ -284,6 +296,30 @@ const GameContainer: React.FC = () => {
         setActiveInspectItem(null);
       }, 8500);
     } else if (target.type === 'exit') {
+      if (currentLevel === 0) {
+        // Direct transition from Level 0 Dreamcore Sanctuary to Level 1 Yellow Halls
+        const nextLevel = 1;
+        setCurrentLevel(nextLevel);
+        AudioEngine.setLevelAmbiance(nextLevel);
+        AudioEngine.playDoor('open');
+        triggerToast('STEPPED THROUGH THE THRESHOLD // ENTERING LEVEL 1: THE YELLOW HALLS...', 6000);
+
+        const currentSeed = labyrinth?.seed || 'LIMINAL-000000';
+        const nextGen = LabyrinthGenerator.generate(currentSeed, nextLevel);
+        setLabyrinth(nextGen);
+
+        anchorsCollectedRef.current = 0;
+        setAnchorsCollected(0);
+
+        const newVisited = new Set<string>();
+        newVisited.add(`${nextGen.spawnRoom.x},${nextGen.spawnRoom.z}`);
+        setVisitedRooms(newVisited);
+
+        interactionTargetRef.current = null;
+        setInteractionTarget(null);
+        return;
+      }
+
       if (anchorsCollectedRef.current >= 3) {
         if (currentLevel < 4) {
           // Advance to the Next Level!

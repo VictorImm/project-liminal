@@ -12,6 +12,8 @@ class AudioEngineClass {
   private ambientGain: GainNode | null = null;
   private staticGain: GainNode | null = null;
   private staticSource: AudioBufferSourceNode | null = null;
+  private dreamcoreGain: GainNode | null = null;
+  private dreamcoreChimeTimer: number | null = null;
   private heartbeatTimer: number | null = null;
   private isMuted: boolean = false;
   private volume: number = 0.8;
@@ -32,6 +34,7 @@ class AudioEngineClass {
       this.initFluorescentHum();
       this.initProximityStatic();
       this.initLiminalAmbience();
+      this.initDreamcoreAmbience();
       this.isInitialized = true;
     } catch (e) {
       console.warn('Web Audio initialization error:', e);
@@ -149,22 +152,138 @@ class AudioEngineClass {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
 
-    if (level === 2) {
-      // Level 2: Sublimity Poolrooms (Watery echo, near-zero ballast buzz, quiet ripples)
-      if (this.humGain) this.humGain.gain.setTargetAtTime(0.015, now, 0.4);
-      if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.08, now, 0.4);
-    } else if (level === 3) {
-      // Level 3: Endless Archive & Hotel (Muffled antique silence, deep hollow stillness)
-      if (this.humGain) this.humGain.gain.setTargetAtTime(0.008, now, 0.4);
-      if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.10, now, 0.4);
-    } else if (level === 4) {
-      // Level 4: Machine Sub-level & Boiler (Heavy mechanical boiler rumble & hum)
-      if (this.humGain) this.humGain.gain.setTargetAtTime(0.05, now, 0.4);
-      if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.18, now, 0.4);
+    // Manage Dreamcore Chimes Loop
+    if (this.dreamcoreChimeTimer) {
+      window.clearInterval(this.dreamcoreChimeTimer);
+      this.dreamcoreChimeTimer = null;
+    }
+
+    if (level === 0) {
+      // Level 0: Dreamcore Sanctuary (Nostalgic warm synth chord pad, peaceful breeze, wind chimes, ZERO 60Hz hum)
+      if (this.humGain) this.humGain.gain.setTargetAtTime(0.0, now, 0.4);
+      if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.02, now, 0.4);
+      if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.24, now, 0.8);
+
+      // Play soft periodic wind chimes
+      this.dreamcoreChimeTimer = window.setInterval(() => {
+        if (Math.random() > 0.3) {
+          this.playDreamcoreChime();
+        }
+      }, 5500);
     } else {
-      // Level 1: The Yellow Halls (Authentic 60Hz fluorescent buzz & dry liminal drone)
-      if (this.humGain) this.humGain.gain.setTargetAtTime(0.08, now, 0.4);
-      if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.12, now, 0.4);
+      if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.0, now, 0.4);
+
+      if (level === 2) {
+        // Level 2: Sublimity Poolrooms (Watery echo, near-zero ballast buzz, quiet ripples)
+        if (this.humGain) this.humGain.gain.setTargetAtTime(0.015, now, 0.4);
+        if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.08, now, 0.4);
+      } else if (level === 3) {
+        // Level 3: Endless Archive & Hotel (Muffled antique silence, deep hollow stillness)
+        if (this.humGain) this.humGain.gain.setTargetAtTime(0.008, now, 0.4);
+        if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.10, now, 0.4);
+      } else if (level === 4) {
+        // Level 4: Machine Sub-level & Boiler (Heavy mechanical boiler rumble & hum)
+        if (this.humGain) this.humGain.gain.setTargetAtTime(0.05, now, 0.4);
+        if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.18, now, 0.4);
+      } else {
+        // Level 1: The Yellow Halls (Authentic 60Hz fluorescent buzz & dry liminal drone)
+        if (this.humGain) this.humGain.gain.setTargetAtTime(0.08, now, 0.4);
+        if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.12, now, 0.4);
+      }
+    }
+  }
+
+  // --- PROCEDURAL DREAMCORE ETHEREAL SYNTH PADS & BREEZE ---
+  private initDreamcoreAmbience() {
+    if (!this.ctx || !this.masterGain) return;
+
+    this.dreamcoreGain = this.ctx.createGain();
+    this.dreamcoreGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+    this.dreamcoreGain.connect(this.masterGain);
+
+    // Warm dreamy chord pad: F3, A3, C4, E4 (Fmaj7 - nostalgic, peaceful, comforting)
+    const freqs = [174.61, 220.0, 261.63, 329.63];
+    freqs.forEach((freq, idx) => {
+      if (!this.ctx || !this.dreamcoreGain) return;
+      const osc = this.ctx.createOscillator();
+      osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+      // Subtle organic detuning for lush chorused width
+      const detune = (idx - 1.5) * 4.2;
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      osc.detune.setValueAtTime(detune, this.ctx.currentTime);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(460, this.ctx.currentTime);
+      filter.Q.setValueAtTime(1.8, this.ctx.currentTime);
+
+      const padGain = this.ctx.createGain();
+      padGain.gain.setValueAtTime(0.18 / freqs.length, this.ctx.currentTime);
+
+      osc.connect(filter);
+      filter.connect(padGain);
+      padGain.connect(this.dreamcoreGain);
+      osc.start();
+    });
+
+    // Gentle surreal summer meadow breeze noise (filtered pink noise)
+    const bufferSize = this.ctx.sampleRate * 3;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      data[i] = (b0 + b1 + b2) * 0.12;
+    }
+
+    const breeze = this.ctx.createBufferSource();
+    breeze.buffer = noiseBuffer;
+    breeze.loop = true;
+
+    const breezeFilter = this.ctx.createBiquadFilter();
+    breezeFilter.type = 'bandpass';
+    breezeFilter.frequency.setValueAtTime(380, this.ctx.currentTime);
+    breezeFilter.Q.setValueAtTime(0.8, this.ctx.currentTime);
+
+    const breezeGain = this.ctx.createGain();
+    breezeGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+
+    breeze.connect(breezeFilter);
+    breezeFilter.connect(breezeGain);
+    breezeGain.connect(this.dreamcoreGain);
+    breeze.start();
+  }
+
+  // Play peaceful crystalline wind chime notes in Dreamcore Sanctuary
+  private playDreamcoreChime() {
+    if (!this.ctx || !this.dreamcoreGain) return;
+    const now = this.ctx.currentTime;
+
+    // Pentatonic bell/chime frequencies
+    const chimeFreqs = [1318.5, 1567.98, 1760.0, 1975.53, 2349.32, 2637.0];
+    const count = 1 + Math.floor(Math.random() * 2);
+
+    for (let i = 0; i < count; i++) {
+      const delay = i * 0.18 + Math.random() * 0.08;
+      const freq = chimeFreqs[Math.floor(Math.random() * chimeFreqs.length)];
+
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + delay);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now + delay);
+      gain.gain.linearRampToValueAtTime(0.12, now + delay + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 2.8);
+
+      osc.connect(gain);
+      gain.connect(this.dreamcoreGain);
+
+      osc.start(now + delay);
+      osc.stop(now + delay + 2.9);
     }
   }
 

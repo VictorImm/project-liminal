@@ -1,4 +1,4 @@
-export type RoomBiome = 'mono_yellow' | 'poolroom' | 'archive' | 'sublevel_red' | 'exit_airlock';
+export type RoomBiome = 'mono_yellow' | 'poolroom' | 'archive' | 'sublevel_red' | 'exit_airlock' | 'dreamcore';
 
 export interface RoomDoor {
   direction: 'north' | 'south' | 'east' | 'west';
@@ -68,7 +68,79 @@ export class LabyrinthGenerator {
       'LEVEL 3 // ENDLESS ARCHIVE & HOTEL',
       'LEVEL 4 // THE MACHINE SUB-LEVEL & BOILER',
     ];
-    const currentLevel = Math.max(1, Math.min(4, level));
+    const currentLevel = Math.max(0, Math.min(4, level));
+
+    // --- LEVEL 0: DREAMCORE SANCTUARY (PEACEFUL OPEN MEADOW & SAFE ZONE) ---
+    if (currentLevel === 0) {
+      const levelTitle = 'LEVEL 0 // DREAMCORE SANCTUARY';
+      const activeRooms: Map<string, MapRoom> = new Map();
+      const gridW = 6;
+      const gridH = 6;
+      const spawnCoord = { x: 2, z: 2 };
+      const exitCoord = { x: 5, z: 5 };
+
+      for (let x = 0; x < gridW; x++) {
+        for (let z = 0; z < gridH; z++) {
+          const doors: RoomDoor[] = [
+            { direction: 'north', isOpen: true },
+            { direction: 'south', isOpen: true },
+            { direction: 'east', isOpen: true },
+            { direction: 'west', isOpen: true },
+          ];
+          const room: MapRoom = {
+            x,
+            z,
+            biome: 'dreamcore',
+            doors,
+            items: [],
+            hasLightFlicker: false,
+            lightColor: '#f1f5f9',
+            artSeed: Math.floor(rng.next() * 10000),
+          };
+          activeRooms.set(`${x},${z}`, room);
+        }
+      }
+
+      // Add peaceful nostalgic dreamcore lore notes
+      const noteRoom1 = activeRooms.get('2,2');
+      if (noteRoom1) {
+        noteRoom1.items.push({
+          id: 'note_dream_1',
+          type: 'note',
+          name: 'A Faded Childhood Postcard',
+          description:
+            'Wish you were here. The clouds never move, and nothing here can hurt you. When you are ready to venture into the unknown, find the solitary white doorway resting on the eastern hill.',
+          roomX: 2,
+          roomZ: 2,
+          localPos: [1.2, 0.4, 0.8],
+        });
+      }
+
+      const noteRoom2 = activeRooms.get('4,3');
+      if (noteRoom2) {
+        noteRoom2.items.push({
+          id: 'note_dream_2',
+          type: 'note',
+          name: 'Weathered Journal Entry: 1997',
+          description:
+            'The air smells like warm rain and distant lilac. No 60Hz hum, no footsteps behind me. This is the sanctuary between worlds.',
+          roomX: 4,
+          roomZ: 3,
+          localPos: [-1.0, 0.4, -0.6],
+        });
+      }
+
+      return {
+        rooms: Array.from(activeRooms.values()),
+        spawnRoom: spawnCoord,
+        exitRoom: exitCoord,
+        anchorsCount: 0,
+        seed,
+        level: 0,
+        levelTitle,
+      };
+    }
+
     const levelTitle = levelTitles[currentLevel - 1];
 
     // --- PROCEDURAL MAP TOPOLOGY PER LEVEL (ZERO REPETITION) ---
