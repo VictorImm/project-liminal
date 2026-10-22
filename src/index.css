@@ -11,12 +11,9 @@
   background-size: 100% 3px, 6px 100%;
 }
 
+/* Vignette removed as requested by user */
 .crt-vignette {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 21;
-  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85), inset 0 0 180px rgba(0, 0, 0, 0.95);
+  display: none !important;
 }
 
 /* Subtle Film Grain Noise */

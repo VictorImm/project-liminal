@@ -389,7 +389,6 @@ const GameContainer: React.FC = () => {
       {settings.enableCRTShader && (
         <>
           <div className="crt-overlay" />
-          <div className="crt-vignette" />
           <div className="film-grain" />
         </>
       )}

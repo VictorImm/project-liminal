@@ -48,6 +48,7 @@ export class LiminalWorld {
     corrugatedCeiling: THREE.CanvasTexture;
     dreamGrass: THREE.CanvasTexture;
     checkeredDream: THREE.CanvasTexture;
+    realisticSky: THREE.CanvasTexture;
   };
 
   constructor(container: HTMLElement) {
@@ -83,6 +84,7 @@ export class LiminalWorld {
       corrugatedCeiling: TextureGenerator.createCorrugatedCeilingTexture(),
       dreamGrass: TextureGenerator.createDreamcoreGrassTexture(),
       checkeredDream: TextureGenerator.createCheckeredDreamTexture(),
+      realisticSky: TextureGenerator.createRealisticSkyTexture(),
     };
 
     // Survival Horror Flashlight (Deep beam + localized fill)
@@ -522,21 +524,32 @@ export class LiminalWorld {
 
   // --- 100% PROCEDURAL DREAMCORE SANCTUARY (LEVEL 0 SAFE ZONE) ---
   private buildDreamcoreSanctuary(labyrinth: GeneratedLabyrinth) {
-    // 1. Ultra-Bright Vivid Dreamcore Atmosphere: Cerulean blue sky & warm sunny mist
-    this.scene.background = new THREE.Color(0x38bdf8); // Vibrant nostalgic sky-blue
-    this.scene.fog = new THREE.FogExp2(0xbae6fd, 0.009); // Luminous airy pastel mist
+    // 1. Realistic Atmospheric Sky Dome with Natural Sky Gradient & Horizon Glow
+    this.scene.background = this.textures.realisticSky;
+    this.scene.fog = new THREE.FogExp2(0xdbeafe, 0.0075); // Soft atmospheric horizon haze
 
-    // Warm brilliant directional sunlight
-    const sun = new THREE.DirectionalLight(0xfffbeb, 2.8);
-    sun.position.set(30, 48, 20);
+    // 360° Sky Dome Mesh with realistic atmospheric Rayleigh gradient
+    const skyGeo = new THREE.SphereGeometry(88, 32, 24);
+    const skyMat = new THREE.MeshBasicMaterial({
+      map: this.textures.realisticSky,
+      side: THREE.BackSide,
+      depthWrite: false,
+    });
+    const skyDome = new THREE.Mesh(skyGeo, skyMat);
+    skyDome.position.set(25, 0, 25);
+    this.scene.add(skyDome);
+
+    // Warm brilliant directional sunlight matching the solar angle
+    const sun = new THREE.DirectionalLight(0xfffbeb, 2.7);
+    sun.position.set(45, 38, 25);
     this.scene.add(sun);
 
-    // Radiant celestial ambient lighting
-    const dreamAmbient = new THREE.AmbientLight(0xffffff, 1.45);
+    // Radiant natural celestial ambient lighting
+    const dreamAmbient = new THREE.AmbientLight(0xffffff, 1.35);
     this.scene.add(dreamAmbient);
 
-    // Vibrant sky & meadow bounce light (Studio Ghibli / Dreamcore lighting)
-    const hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x4ade80, 0.9);
+    // Natural sky & meadow bounce light
+    const hemiLight = new THREE.HemisphereLight(0x60a5fa, 0x4ade80, 0.85);
     this.scene.add(hemiLight);
 
     // 2. Fluffy Puffy White Dream Clouds drifting in the sky

@@ -631,4 +631,45 @@ export class TextureGenerator {
     tex.wrapT = THREE.RepeatWrapping;
     return tex;
   }
+
+  // Level 0 Dreamcore: Realistic Atmospheric Sky Dome Gradient with Natural Horizon & Sun Glow
+  static createRealisticSkyTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    // Atmospheric Rayleigh & Mie scattering vertical gradient:
+    // Y: 0 (Zenith straight up) -> Y: 280 (Horizon line) -> Y: 512 (Below horizon)
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0.0, '#1d4ed8');   // Deep cobalt / zenith azure
+    grad.addColorStop(0.16, '#2563eb');  // Royal sky blue
+    grad.addColorStop(0.32, '#3b82f6');  // Classic clear sunny blue
+    grad.addColorStop(0.44, '#60a5fa');  // Soft atmospheric scatter
+    grad.addColorStop(0.54, '#93c5fd');  // Lower atmosphere cerulean
+    grad.addColorStop(0.60, '#c7d2fe');  // Pale lavender-blue haze
+    grad.addColorStop(0.66, '#fef08a');  // Warm horizon sunlight glow
+    grad.addColorStop(0.72, '#fed7aa');  // Golden horizon kiss
+    grad.addColorStop(0.82, '#86efac');  // Meadow horizon blend
+    grad.addColorStop(1.0, '#22c55e');   // Deep ground
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // Warm radiant sun disc & atmospheric solar halo near the horizon
+    const sunX = 720;
+    const sunY = 280;
+    const sunGrad = ctx.createRadialGradient(sunX, sunY, 15, sunX, sunY, 260);
+    sunGrad.addColorStop(0, 'rgba(255, 255, 240, 0.95)');
+    sunGrad.addColorStop(0.08, 'rgba(254, 240, 138, 0.7)');
+    sunGrad.addColorStop(0.25, 'rgba(253, 230, 138, 0.35)');
+    sunGrad.addColorStop(0.55, 'rgba(254, 215, 170, 0.15)');
+    sunGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = sunGrad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    return tex;
+  }
 }
