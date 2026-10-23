@@ -75,7 +75,7 @@ export const HUD: React.FC<HUDProps> = ({
       <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
         {/* VHS Timestamp & Status (Rendered if VHS overlay is off) */}
         {!vhsActive ? (
-          <div className="bg-black/60 border border-zinc-800 p-2.5 rounded backdrop-blur-sm text-xs space-y-1">
+          <div className="bg-black/75 border border-zinc-800 p-2.5 rounded backdrop-blur-sm text-xs space-y-1">
             <div className="flex items-center gap-2">
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
               <span className="text-zinc-200 font-bold tracking-wider">REC ● CAM_01</span>
@@ -83,45 +83,48 @@ export const HUD: React.FC<HUDProps> = ({
             <div className="text-zinc-400 font-mono uppercase">{levelTitle || 'SECTOR_0 // LIMINAL THRESHOLD'}</div>
           </div>
         ) : (
-          <div className="w-32" /> /* Spacer so top center anchors align beautifully */
+          <div className="w-32 md:w-48" /> /* Spacer so top center anchors align beautifully */
         )}
 
         {/* Reality Anchors or Sanctuary Safe Zone Indicator */}
         {totalAnchors > 0 ? (
-          <div className="bg-black/75 border border-cyan-800/80 p-2.5 rounded backdrop-blur-sm text-xs shadow-lg">
-            <div className="text-cyan-400 font-bold uppercase tracking-wider mb-1">
-              Reality Anchors: {anchorsCollected} / {totalAnchors}
+          <div className="bg-black/80 border border-zinc-700/80 px-3 py-1.5 rounded backdrop-blur-sm text-xs shadow-lg">
+            <div className="vhs-osd-text text-amber-400 font-bold uppercase tracking-widest text-[11px] md:text-xs mb-1 text-center">
+              [ANCHORS: {anchorsCollected} / {totalAnchors}]
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 justify-center">
               {Array.from({ length: totalAnchors }).map((_, i) => (
                 <span
                   key={i}
-                  className={`inline-block w-4 h-4 border ${
+                  className={`inline-block w-3.5 h-3.5 border ${
                     i < anchorsCollected
-                      ? 'bg-cyan-400 border-cyan-300 shadow-[0_0_8px_rgba(0,255,255,0.8)]'
-                      : 'border-zinc-700 bg-zinc-900/50'
+                      ? 'bg-amber-400 border-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.9)]'
+                      : 'border-zinc-700 bg-zinc-900/60'
                   }`}
                 />
               ))}
             </div>
           </div>
         ) : (
-          <div className="bg-black/75 border border-emerald-500/60 p-2.5 rounded backdrop-blur-sm text-xs shadow-lg">
-            <div className="text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+          <div className="bg-black/80 border border-emerald-600/70 px-3 py-1.5 rounded backdrop-blur-sm text-xs shadow-lg">
+            <div className="vhs-osd-text text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5 text-[11px] md:text-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               SANCTUARY // SAFE ZONE
             </div>
-            <div className="text-emerald-300/80 text-[10px] mt-0.5">
+            <div className="text-emerald-300/80 text-[10px] mt-0.5 text-center">
               PEACEFUL MEADOW • NO THREAT
             </div>
           </div>
         )}
 
         {/* Flashlight Battery & Settings Button */}
-        <div className="flex items-center gap-3">
-          <div className="bg-black/60 border border-zinc-800 p-2.5 rounded backdrop-blur-sm flex items-center gap-2 text-xs">
-            <Flashlight className={`w-4 h-4 ${flashlightOn ? 'text-amber-400' : 'text-zinc-600'}`} />
-            <div className="w-20 bg-zinc-800 h-2 rounded-full overflow-hidden">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="bg-black/80 border border-zinc-700/80 px-2.5 py-1.5 rounded backdrop-blur-sm flex items-center gap-2 text-xs">
+            <Flashlight className={`w-3.5 h-3.5 ${flashlightOn ? 'text-amber-400' : 'text-zinc-600'}`} />
+            <span className="vhs-osd-text text-[11px] text-zinc-300 font-bold hidden sm:inline">
+              PWR:
+            </span>
+            <div className="w-14 sm:w-20 bg-zinc-900 border border-zinc-700 h-2 rounded overflow-hidden">
               <div
                 className={`h-full transition-all duration-300 ${
                   batteryLevel < 20 ? 'bg-red-500 animate-pulse' : 'bg-amber-400'
@@ -129,38 +132,52 @@ export const HUD: React.FC<HUDProps> = ({
                 style={{ width: `${batteryLevel}%` }}
               />
             </div>
-            <span className="font-bold text-zinc-300 w-8 text-right">
+            <span className="vhs-osd-text font-bold text-zinc-200 text-[11px] w-7 text-right">
               {Math.round(batteryLevel)}%
             </span>
           </div>
 
           <button
             onClick={onOpenSettings}
-            className="pointer-events-auto bg-black/70 hover:bg-zinc-800 border border-zinc-700 p-2 rounded text-zinc-300 hover:text-white transition-colors"
-            title="Settings"
+            className="pointer-events-auto bg-black/80 hover:bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 rounded text-zinc-300 hover:text-white transition-colors flex items-center gap-1.5"
+            title="Settings / Pause [ESC]"
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="w-3.5 h-3.5" />
+            <span className="vhs-osd-text text-[11px] hidden sm:inline font-bold">MENU</span>
           </button>
         </div>
       </div>
 
       {/* CENTER CROSSHAIR & INTERACTION PROMPT */}
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        {/* Reticle Dot */}
-        <div
-          className={`w-2 h-2 rounded-full transition-all duration-150 ${
-            interactionTarget
-              ? 'scale-150 bg-cyan-400 shadow-[0_0_10px_rgba(0,255,255,1)]'
-              : 'bg-zinc-400/70'
-          }`}
-        />
-
-        {/* Interactive Prompt Banner */}
-        {interactionTarget && (
-          <div className="mt-6 px-4 py-1.5 bg-black/85 border border-cyan-500/80 text-cyan-300 text-xs tracking-wider uppercase font-bold shadow-lg animate-fade-in backdrop-blur-sm">
-            {interactionTarget.prompt}
+        {/* Camcorder Autofocus Target Brackets */}
+        <div className="relative flex items-center justify-center">
+          <div
+            className={`relative flex items-center justify-center transition-all duration-150 ${
+              interactionTarget ? 'scale-125' : 'scale-100 opacity-75'
+            }`}
+          >
+            <span
+              className={`block w-1.5 h-1.5 rounded-full transition-all duration-150 ${
+                interactionTarget
+                  ? 'bg-cyan-400 shadow-[0_0_10px_rgba(0,255,255,1)] scale-125'
+                  : 'bg-zinc-300/80 shadow-[0_0_2px_#000]'
+              }`}
+            />
+            {/* Viewfinder Target Notches */}
+            <span className="absolute -left-3 -top-3 w-2 h-2 border-t border-l border-zinc-400/70" />
+            <span className="absolute -right-3 -top-3 w-2 h-2 border-t border-r border-zinc-400/70" />
+            <span className="absolute -left-3 -bottom-3 w-2 h-2 border-b border-l border-zinc-400/70" />
+            <span className="absolute -right-3 -bottom-3 w-2 h-2 border-b border-r border-zinc-400/70" />
           </div>
-        )}
+
+          {/* Interactive Prompt Banner */}
+          {interactionTarget && (
+            <div className="absolute top-8 whitespace-nowrap px-3.5 py-1.5 bg-black/90 border border-cyan-400/80 text-cyan-300 text-xs tracking-wider uppercase font-bold shadow-2xl backdrop-blur-sm vhs-osd-text animate-fade-in">
+              {interactionTarget.prompt}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* HUD TOAST NOTIFICATION (Non-blocking: Camera rotation remains active) */}

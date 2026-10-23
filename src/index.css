@@ -34,7 +34,7 @@
   position: fixed;
   inset: 0;
   z-index: 10;
-  background: radial-gradient(circle at center, rgba(14, 28, 20, 0.03) 0%, rgba(8, 12, 18, 0.22) 100%);
+  background: radial-gradient(circle at center, rgba(14, 28, 20, 0.04) 0%, rgba(8, 12, 18, 0.28) 100%);
   mix-blend-mode: overlay;
 }
 
@@ -44,9 +44,9 @@
   position: fixed;
   inset: 0;
   z-index: 11;
-  opacity: 0.085;
+  opacity: 0.12;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  animation: vhs-noise-shift 0.15s steps(2) infinite;
+  animation: vhs-noise-shift 0.12s steps(2) infinite;
 }
 
 @keyframes vhs-noise-shift {
@@ -55,38 +55,93 @@
   100% { transform: translate(1px, -1px); }
 }
 
-/* Iconic VCR On-Screen Display (OSD) Text with Heavy Drop Shadow */
+/* Iconic VCR On-Screen Display (OSD) Text with Heavy Character Outline */
 .vhs-osd-text {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'VT323', 'Courier New', Courier, monospace;
   font-weight: 700;
-  color: #f8fafc;
-  letter-spacing: 0.12em;
+  color: #f1f5f9;
+  letter-spacing: 0.14em;
   text-shadow:
     2px 2px 0px #000000,
-    -1px -1px 0px #000000,
-    1px -1px 0px #000000,
-    -1px 1px 0px #000000,
+    -2px -2px 0px #000000,
+    2px -2px 0px #000000,
+    -2px 2px 0px #000000,
+    0px 2px 0px #000000,
     2px 0px 0px #000000,
-    0px 2px 0px #000000;
+    -2px 0px 0px #000000,
+    0px -2px 0px #000000,
+    3px 3px 2px rgba(0, 0, 0, 0.9);
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
 }
 
-/* Subtle NTSC RGB Color Bleed / Chromatic Fringing */
+/* Bold NTSC RGB Color Bleed / Chromatic Fringing */
 .vhs-chromatic-text {
   text-shadow:
-    -1.5px 0px 0px rgba(239, 68, 68, 0.75),
-    1.5px 0px 0px rgba(56, 189, 248, 0.75),
-    2px 2px 1px #000000;
+    -3px 0px 1px rgba(239, 68, 68, 0.9),
+    3px 0px 1px rgba(34, 211, 238, 0.9),
+    2px 2px 0px #000000,
+    -2px -2px 0px #000000,
+    2px -2px 0px #000000,
+    -2px 2px 0px #000000;
 }
 
-/* Ultra-Fine NTSC Interlaced Scanlines (Full Screen) */
+/* Ultra-Fine NTSC Interlaced Scanlines with Micro-Drift */
 .vhs-interlace-lines {
   pointer-events: none;
   position: fixed;
   inset: 0;
   z-index: 12;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.35) 2px,
+    rgba(0, 0, 0, 0.35) 4px
+  );
   background-size: 100% 4px;
   opacity: 0.65;
+  animation: vhs-scanline-drift 10s linear infinite;
+  will-change: background-position;
+}
+
+@keyframes vhs-scanline-drift {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100px; }
+}
+
+/* Fine Magnetic Tape Grain */
+.vhs-analog-grain {
+  pointer-events: none;
+  position: fixed;
+  inset: -10%;
+  width: 120%;
+  height: 120%;
+  z-index: 12;
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='vhsNoise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23vhsNoise)'/%3E%3C/svg%3E");
+  animation: vhs-grain-jitter 0.2s steps(4) infinite;
+  will-change: transform;
+}
+
+@keyframes vhs-grain-jitter {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-1.5%, 1.5%); }
+  50% { transform: translate(1.5%, -1%); }
+  75% { transform: translate(-1%, -1.5%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Camcorder Lens Chromatic Aberration & Radial Optical Vignette */
+.vhs-lens-aberration {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 13;
+  box-shadow:
+    inset 0 0 140px rgba(0, 0, 0, 0.78),
+    inset 5px 0 70px rgba(255, 30, 60, 0.1),
+    inset -5px 0 70px rgba(0, 210, 255, 0.1);
 }
 
 /* Authentic Bottom Head-Switching Noise Bar (Helical Tape Drum Noise) */
@@ -96,38 +151,51 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 22px;
-  z-index: 14;
+  height: 26px;
+  z-index: 15;
   background: repeating-linear-gradient(
     0deg,
-    rgba(255, 255, 255, 0.5) 0px,
-    rgba(255, 255, 255, 0.5) 1px,
-    rgba(180, 180, 180, 0.25) 2px,
+    rgba(255, 255, 255, 0.6) 0px,
+    rgba(255, 255, 255, 0.6) 1px,
+    rgba(160, 160, 160, 0.3) 2px,
     transparent 3px
   );
-  animation: vhs-head-switch 0.12s infinite steps(2);
-  opacity: 0.9;
+  animation: vhs-head-switch 0.1s infinite steps(2);
+  opacity: 0.95;
   mix-blend-mode: screen;
 }
 
 @keyframes vhs-head-switch {
-  0% { transform: translateY(0px) scaleX(1); opacity: 0.8; }
-  50% { transform: translateY(-1.5px) scaleX(1.015); opacity: 1; }
-  100% { transform: translateY(1px) scaleX(0.99); opacity: 0.85; }
+  0% { transform: translateY(0px) scaleX(1); opacity: 0.85; }
+  50% { transform: translateY(-2px) scaleX(1.02); opacity: 1; }
+  100% { transform: translateY(1px) scaleX(0.99); opacity: 0.9; }
 }
 
-/* Periodic VHS Magnetic Tracking Jitter Bar (Rolls down every ~10s) */
+/* Periodic VHS Magnetic Tracking Jitter Bar (Rolls down every ~11s) */
 .vhs-roll-bar {
   pointer-events: none;
   position: fixed;
   left: 0;
   right: 0;
-  height: 22px;
-  z-index: 13;
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(2px);
-  animation: vhs-tape-roll 10s infinite linear;
-  opacity: 0.5;
+  height: 28px;
+  z-index: 14;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 40%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.16) 60%,
+    transparent 100%
+  );
+  backdrop-filter: blur(2.5px) contrast(1.15);
+  animation: vhs-tape-roll 11s infinite linear;
+  opacity: 0.55;
+}
+
+@keyframes vhs-tape-roll {
+  0% { transform: translateY(-100%); }
+  8% { transform: translateY(105vh); }
+  100% { transform: translateY(105vh); }
 }
 
 /* Subtle Periodic Horizontal Tape Glitch Line */
@@ -136,36 +204,185 @@
   position: fixed;
   left: 0;
   right: 0;
-  height: 2px;
-  z-index: 13;
-  background: rgba(147, 197, 253, 0.35);
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
-  animation: vhs-flutter 8s infinite ease-in-out;
-  opacity: 0.4;
+  height: 3px;
+  z-index: 14;
+  background: rgba(147, 197, 253, 0.45);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+  animation: vhs-flutter 7s infinite ease-in-out;
+  opacity: 0.5;
 }
 
 @keyframes vhs-flutter {
-  0%, 93% { top: -10px; opacity: 0; }
-  94% { top: 32%; opacity: 0.6; }
-  95% { top: 68%; opacity: 0.75; }
+  0%, 92% { top: -10px; opacity: 0; }
+  93% { top: 28%; opacity: 0.7; }
+  94.5% { top: 62%; opacity: 0.85; }
   96% { top: 102%; opacity: 0; }
   100% { top: 102%; opacity: 0; }
 }
 
-@keyframes vhs-tape-roll {
-  0% { transform: translateY(-100%); }
-  9% { transform: translateY(105vh); }
-  100% { transform: translateY(105vh); }
+/* Occasional Horizontal Tracking Glitch Slice */
+.vhs-tracking-glitch {
+  pointer-events: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 18px;
+  z-index: 15;
+  background: rgba(255, 255, 255, 0.45);
+  mix-blend-mode: overlay;
+  opacity: 0;
+  animation: vhs-random-tracking-glitch 16s infinite;
 }
 
-/* Blinking REC Dot Animation */
+@keyframes vhs-random-tracking-glitch {
+  0%, 94.9% {
+    opacity: 0;
+    top: 20%;
+    transform: scaleX(1) skewX(0deg);
+  }
+  95% {
+    opacity: 0.9;
+    top: 35%;
+    transform: scaleX(1.03) skewX(-5deg);
+  }
+  95.8% {
+    opacity: 0.8;
+    top: 70%;
+    transform: scaleX(0.97) skewX(4deg);
+  }
+  96.5% {
+    opacity: 0;
+    top: 10%;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Camcorder AGC Luminance Breathing */
+.vhs-luma-drift {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  animation: vhs-luma-breathe 8s ease-in-out infinite alternate;
+}
+
+@keyframes vhs-luma-breathe {
+  0% { filter: brightness(1) contrast(1.01); }
+  50% { filter: brightness(0.96) contrast(1.05); }
+  100% { filter: brightness(1.03) contrast(0.99); }
+}
+
+/* Blinking REC Dot & Camcorder Indicator Animation */
 @keyframes vhs-rec-blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0.2; }
+  0%, 54% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 1));
+  }
+  55%, 100% {
+    opacity: 0.2;
+    transform: scale(0.92);
+    filter: none;
+  }
 }
 
 .animate-vhs-rec {
-  animation: vhs-rec-blink 1.2s infinite;
+  animation: vhs-rec-blink 1.0s infinite;
+}
+
+/* Subtle Analog Text Shimmer / Jitter */
+@keyframes vhs-micro-jitter {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(0.4px, -0.3px); }
+  100% { transform: translate(0, 0); }
+}
+
+.animate-vhs-jitter {
+  animation: vhs-micro-jitter 0.25s infinite ease-in-out;
+}
+
+/* Camcorder Audio VU Meter Bar Fluctuations */
+@keyframes vhs-vu-fluctuate-1 {
+  0%, 100% { width: 55%; }
+  15% { width: 78%; }
+  30% { width: 42%; }
+  45% { width: 88%; }
+  60% { width: 64%; }
+  75% { width: 92%; }
+  90% { width: 48%; }
+}
+
+@keyframes vhs-vu-fluctuate-2 {
+  0%, 100% { width: 50%; }
+  20% { width: 72%; }
+  35% { width: 38%; }
+  55% { width: 84%; }
+  70% { width: 62%; }
+  85% { width: 90%; }
+}
+
+.animate-vu-1 {
+  animation: vhs-vu-fluctuate-1 0.4s infinite ease-in-out;
+}
+
+.animate-vu-2 {
+  animation: vhs-vu-fluctuate-2 0.35s infinite ease-in-out;
+}
+
+/* Camcorder 90% Safe Viewfinder Corner Crop Marks */
+.vhs-viewfinder-frame {
+  pointer-events: none;
+  position: fixed;
+  inset: 12px;
+  z-index: 21;
+}
+
+@media (min-width: 768px) {
+  .vhs-viewfinder-frame {
+    inset: 20px;
+  }
+}
+
+.vhs-corner-tl {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  border-top: 2px solid rgba(255, 255, 255, 0.4);
+  border-left: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.vhs-corner-tr {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  border-top: 2px solid rgba(255, 255, 255, 0.4);
+  border-right: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.vhs-corner-bl {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+  border-left: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.vhs-corner-br {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+  border-right: 2px solid rgba(255, 255, 255, 0.4);
 }
 
 /* Utility Animations */
@@ -180,4 +397,25 @@
 
 .animate-flicker {
   animation: flicker 0.15s infinite;
+}
+
+/* Accessibility: Respect Reduced Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  .vhs-interlace-lines,
+  .vhs-roll-bar,
+  .vhs-flutter-line,
+  .vhs-tracking-glitch,
+  .vhs-analog-grain,
+  .vhs-tape-noise,
+  .vhs-luma-drift,
+  .animate-vhs-jitter,
+  .animate-vu-1,
+  .animate-vu-2 {
+    animation: none !important;
+  }
+  .vhs-roll-bar,
+  .vhs-flutter-line,
+  .vhs-tracking-glitch {
+    display: none !important;
+  }
 }

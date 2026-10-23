@@ -201,30 +201,43 @@ class AudioEngineClass {
     this.dreamcoreGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
     this.dreamcoreGain.connect(this.masterGain);
 
-    // Warm dreamy chord pad: F3, A3, C4, E4 (Fmaj7 - nostalgic, peaceful, comforting)
-    const freqs = [174.61, 220.0, 261.63, 329.63];
+    // Warm nostalgic chord pad: F2 (bass root), F3, A3, C4, E4, G4 (Fmaj9 - deeply peaceful, nostalgic, comforting)
+    const freqs = [87.31, 174.61, 220.0, 261.63, 329.63, 392.0];
+    
+    // Slow breathing filter for ethereal atmospheric motion
+    const masterPadFilter = this.ctx.createBiquadFilter();
+    masterPadFilter.type = 'lowpass';
+    masterPadFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
+    masterPadFilter.Q.setValueAtTime(1.5, this.ctx.currentTime);
+
+    // Gentle LFO modulating the filter cutoff (slow 0.06 Hz swell like peaceful breathing)
+    const lfo = this.ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(0.06, this.ctx.currentTime);
+    const lfoGain = this.ctx.createGain();
+    lfoGain.gain.setValueAtTime(90, this.ctx.currentTime);
+    lfo.connect(lfoGain);
+    lfoGain.connect(masterPadFilter.frequency);
+    lfo.start();
+
     freqs.forEach((freq, idx) => {
       if (!this.ctx || !this.dreamcoreGain) return;
       const osc = this.ctx.createOscillator();
-      osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+      osc.type = idx === 0 ? 'sine' : (idx % 2 === 0 ? 'sine' : 'triangle');
       // Subtle organic detuning for lush chorused width
-      const detune = (idx - 1.5) * 4.2;
+      const detune = (idx - 2.5) * 3.5;
       osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
       osc.detune.setValueAtTime(detune, this.ctx.currentTime);
 
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(460, this.ctx.currentTime);
-      filter.Q.setValueAtTime(1.8, this.ctx.currentTime);
-
       const padGain = this.ctx.createGain();
-      padGain.gain.setValueAtTime(0.18 / freqs.length, this.ctx.currentTime);
+      const vol = idx === 0 ? 0.08 : (0.16 / (freqs.length - 1));
+      padGain.gain.setValueAtTime(vol, this.ctx.currentTime);
 
-      osc.connect(filter);
-      filter.connect(padGain);
-      padGain.connect(this.dreamcoreGain);
+      osc.connect(masterPadFilter);
       osc.start();
     });
+
+    masterPadFilter.connect(this.dreamcoreGain);
 
     // Gentle surreal summer meadow breeze noise (filtered pink noise)
     const bufferSize = this.ctx.sampleRate * 3;
@@ -245,11 +258,11 @@ class AudioEngineClass {
 
     const breezeFilter = this.ctx.createBiquadFilter();
     breezeFilter.type = 'bandpass';
-    breezeFilter.frequency.setValueAtTime(380, this.ctx.currentTime);
-    breezeFilter.Q.setValueAtTime(0.8, this.ctx.currentTime);
+    breezeFilter.frequency.setValueAtTime(360, this.ctx.currentTime);
+    breezeFilter.Q.setValueAtTime(0.7, this.ctx.currentTime);
 
     const breezeGain = this.ctx.createGain();
-    breezeGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    breezeGain.gain.setValueAtTime(0.07, this.ctx.currentTime);
 
     breeze.connect(breezeFilter);
     breezeFilter.connect(breezeGain);

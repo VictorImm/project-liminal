@@ -537,65 +537,63 @@ export class TextureGenerator {
   }
 
   // Level 0 Dreamcore: Ultra-Vibrant Colorful Rolling Meadow Grass with Multicolored Flowers
+  // Level 0 Dreamcore: Soft nostalgic sun-warmed meadow with gentle chamomile and forget-me-not wildflowers
   static createDreamcoreGrassTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    // Rich saturated sunny lime-green meadow base (Windows Bliss / Studio Ghibli style)
+    // Sun-warmed nostalgic meadow base (faded sage, soft clover, warm golden undertones)
     const grad = ctx.createLinearGradient(0, 0, 512, 512);
-    grad.addColorStop(0, '#38c558');
-    grad.addColorStop(0.35, '#4ade80');
-    grad.addColorStop(0.7, '#22c55e');
-    grad.addColorStop(1, '#16a34a');
+    grad.addColorStop(0, '#3f7e49');
+    grad.addColorStop(0.35, '#569b61');
+    grad.addColorStop(0.7, '#488c54');
+    grad.addColorStop(1, '#3b7545');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 512);
 
-    // Sunlit bright grass blades & clover patches
-    for (let i = 0; i < 5000; i++) {
+    // Subtle sun-kissed grass blades & clover texture
+    for (let i = 0; i < 4500; i++) {
       const gx = Math.random() * 512;
       const gy = Math.random() * 512;
-      const gh = Math.random() * 10 + 4;
-      const hues = ['#86efac', '#4ade80', '#22c55e', '#a7f3d0', '#6ee7b7'];
+      const gh = Math.random() * 8 + 3;
+      const hues = ['#72b87d', '#5ba366', '#87c891', '#9dd7a6', '#69ad73'];
       ctx.fillStyle = hues[Math.floor(Math.random() * hues.length)];
-      ctx.fillRect(gx, gy, 2, gh);
+      ctx.fillRect(gx, gy, 1.8, gh);
     }
 
-    // Abundant Multicolored Surreal Wildflowers (Poppies, Buttercups, Forget-me-nots, Daisies, Lilacs)
+    // Delicate nostalgic wildflowers (Chamomile daisies, misty forget-me-nots, soft lavender, pale buttercups)
     const petalPalettes = [
-      { petal: '#f43f5e', center: '#fef08a' }, // Hot Pink Poppy
-      { petal: '#fb7185', center: '#ffffff' }, // Rose Pink
-      { petal: '#facc15', center: '#ca8a04' }, // Sunburst Buttercup
-      { petal: '#38bdf8', center: '#fef08a' }, // Sky Blue Forget-me-not
-      { petal: '#06b6d4', center: '#ffffff' }, // Turquoise
-      { petal: '#a855f7', center: '#fde047' }, // Purple Violet
-      { petal: '#c084fc', center: '#ffffff' }, // Lavender
-      { petal: '#ffffff', center: '#eab308' }, // Chamomile Daisy
-      { petal: '#f97316', center: '#fef08a' }, // Bright Marigold
+      { petal: '#fefefe', center: '#eab308' }, // Chamomile daisy (nostalgic white)
+      { petal: '#f8fafc', center: '#facc15' }, // Soft cream daisy
+      { petal: '#bfdbfe', center: '#fef08a' }, // Pale blue forget-me-not
+      { petal: '#ddd6fe', center: '#ffffff' }, // Misty lavender
+      { petal: '#fde68a', center: '#ca8a04' }, // Pale meadow buttercup
+      { petal: '#fed7aa', center: '#ffffff' }, // Faded peach blossom
     ];
 
-    for (let i = 0; i < 480; i++) {
+    for (let i = 0; i < 380; i++) {
       const fx = Math.random() * 512;
       const fy = Math.random() * 512;
       const choice = petalPalettes[Math.floor(Math.random() * petalPalettes.length)];
-      const radius = Math.random() * 2.5 + 2.0;
+      const radius = Math.random() * 2.0 + 1.6;
 
-      // Draw 4-5 petals
+      // 5 soft round petals
       ctx.fillStyle = choice.petal;
       for (let p = 0; p < 5; p++) {
         const angle = (p * Math.PI * 2) / 5;
         const px = fx + Math.cos(angle) * radius;
         const py = fy + Math.sin(angle) * radius;
         ctx.beginPath();
-        ctx.arc(px, py, radius * 0.75, 0, Math.PI * 2);
+        ctx.arc(px, py, radius * 0.7, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Bright flower center dot
+      // Warm center pollen dot
       ctx.fillStyle = choice.center;
       ctx.beginPath();
-      ctx.arc(fx, fy, radius * 0.55, 0, Math.PI * 2);
+      ctx.arc(fx, fy, radius * 0.45, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -605,7 +603,7 @@ export class TextureGenerator {
     return tex;
   }
 
-  // Level 0 Dreamcore: Vivid Surreal Checkerboard with Iridescent Accents
+  // Level 0 Dreamcore: Soft Surreal Checkerboard with Ethereal Lavender & Porcelain Sheen
   static createCheckeredDreamTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -616,12 +614,12 @@ export class TextureGenerator {
     for (let x = 0; x < 512; x += tileSize) {
       for (let y = 0; y < 512; y += tileSize) {
         const isDark = ((x / tileSize) + (y / tileSize)) % 2 === 0;
-        ctx.fillStyle = isDark ? '#312e81' : '#ffffff';
+        ctx.fillStyle = isDark ? '#333b56' : '#fcfbf7';
         ctx.fillRect(x, y, tileSize, tileSize);
 
-        // Vibrant pastel perimeter glow line on each tile
-        ctx.strokeStyle = isDark ? '#4338ca' : '#e0e7ff';
-        ctx.lineWidth = 2;
+        // Soft pastel perimeter bevel line on each tile
+        ctx.strokeStyle = isDark ? '#47557e' : '#e2e8f0';
+        ctx.lineWidth = 1.5;
         ctx.strokeRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
       }
     }
@@ -632,7 +630,7 @@ export class TextureGenerator {
     return tex;
   }
 
-  // Level 0 Dreamcore: Realistic Atmospheric Sky Dome Gradient with Natural Horizon & Sun Glow
+  // Level 0 Dreamcore: Atmospheric Sky Dome Gradient (Perpetual Nostalgic Golden-Hour Dream)
   static createRealisticSkyTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
@@ -640,30 +638,29 @@ export class TextureGenerator {
     const ctx = canvas.getContext('2d')!;
 
     // Atmospheric Rayleigh & Mie scattering vertical gradient:
-    // Y: 0 (Zenith straight up) -> Y: 280 (Horizon line) -> Y: 512 (Below horizon)
+    // Zenith azure -> soft cornflower blue -> ethereal lavender haze -> golden peach horizon -> meadow ground
     const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0.0, '#1d4ed8');   // Deep cobalt / zenith azure
-    grad.addColorStop(0.16, '#2563eb');  // Royal sky blue
-    grad.addColorStop(0.32, '#3b82f6');  // Classic clear sunny blue
-    grad.addColorStop(0.44, '#60a5fa');  // Soft atmospheric scatter
-    grad.addColorStop(0.54, '#93c5fd');  // Lower atmosphere cerulean
-    grad.addColorStop(0.60, '#c7d2fe');  // Pale lavender-blue haze
-    grad.addColorStop(0.66, '#fef08a');  // Warm horizon sunlight glow
-    grad.addColorStop(0.72, '#fed7aa');  // Golden horizon kiss
-    grad.addColorStop(0.82, '#86efac');  // Meadow horizon blend
-    grad.addColorStop(1.0, '#22c55e');   // Deep ground
+    grad.addColorStop(0.0, '#2563eb');   // Soft rich sky blue
+    grad.addColorStop(0.20, '#3b82f6');  // Pure serene blue
+    grad.addColorStop(0.38, '#60a5fa');  // Cornflower blue
+    grad.addColorStop(0.50, '#93c5fd');  // Soft atmospheric cerulean
+    grad.addColorStop(0.58, '#c4b5fd');  // Ethereal lavender twilight haze
+    grad.addColorStop(0.65, '#fde68a');  // Warm golden peach horizon glow
+    grad.addColorStop(0.72, '#fed7aa');  // Gentle apricot horizon kiss
+    grad.addColorStop(0.82, '#86efac');  // Soft distant knoll blend
+    grad.addColorStop(1.0, '#3f7e49');   // Ground undertone
 
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 512);
 
-    // Warm radiant sun disc & atmospheric solar halo near the horizon
+    // Soft diffused golden-hour sun disc with wide atmospheric corona
     const sunX = 720;
     const sunY = 280;
-    const sunGrad = ctx.createRadialGradient(sunX, sunY, 15, sunX, sunY, 260);
-    sunGrad.addColorStop(0, 'rgba(255, 255, 240, 0.95)');
-    sunGrad.addColorStop(0.08, 'rgba(254, 240, 138, 0.7)');
-    sunGrad.addColorStop(0.25, 'rgba(253, 230, 138, 0.35)');
-    sunGrad.addColorStop(0.55, 'rgba(254, 215, 170, 0.15)');
+    const sunGrad = ctx.createRadialGradient(sunX, sunY, 12, sunX, sunY, 280);
+    sunGrad.addColorStop(0, 'rgba(255, 255, 245, 0.92)');
+    sunGrad.addColorStop(0.08, 'rgba(254, 243, 199, 0.65)');
+    sunGrad.addColorStop(0.25, 'rgba(253, 230, 138, 0.3)');
+    sunGrad.addColorStop(0.55, 'rgba(254, 215, 170, 0.12)');
     sunGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0)');
     ctx.fillStyle = sunGrad;
     ctx.fillRect(0, 0, 1024, 512);

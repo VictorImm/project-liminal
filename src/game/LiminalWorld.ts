@@ -56,7 +56,7 @@ export class LiminalWorld {
   }
 
   private floatingRelics: THREE.Object3D[] = [];
-  private dreamAnimatedObjects: { type: 'monolith' | 'cloud' | 'balloon' | 'swing'; obj: THREE.Object3D; userData: any }[] = [];
+  private dreamAnimatedObjects: { type: 'monolith' | 'cloud' | 'balloon' | 'swing' | 'motes'; obj: THREE.Object3D; userData: any }[] = [];
 
   // Level 2 Sublimity Water Ripple Mesh Pool
   private waterRipples: { mesh: THREE.Mesh; life: number; maxLife: number; active: boolean }[] = [];
@@ -689,9 +689,9 @@ export class LiminalWorld {
 
   // --- 100% PROCEDURAL DREAMCORE SANCTUARY (LEVEL 0 SAFE ZONE) ---
   private buildDreamcoreSanctuary(labyrinth: GeneratedLabyrinth) {
-    // 1. Realistic Atmospheric Sky Dome with Natural Sky Gradient & Horizon Glow
+    // 1. Realistic Atmospheric Sky Dome with Natural Sky Gradient & Golden Horizon Glow
     this.scene.background = this.textures.realisticSky;
-    this.scene.fog = new THREE.FogExp2(0xdbeafe, 0.0075); // Soft atmospheric horizon haze
+    this.scene.fog = new THREE.FogExp2(0xe8edfb, 0.0055); // Soft, dreamlike horizon haze
 
     // 360° Sky Dome Mesh with realistic atmospheric Rayleigh gradient
     const skyGeo = new THREE.SphereGeometry(88, 32, 24);
@@ -704,23 +704,26 @@ export class LiminalWorld {
     skyDome.position.set(25, 0, 25);
     this.levelRootGroup.add(skyDome);
 
-    // Warm brilliant directional sunlight matching the solar angle
-    const sun = new THREE.DirectionalLight(0xfffbeb, 2.7);
+    // Warm golden directional sunlight matching the solar angle
+    const sun = new THREE.DirectionalLight(0xfff8eb, 2.8);
     sun.position.set(45, 38, 25);
     this.levelRootGroup.add(sun);
 
     // Radiant natural celestial ambient lighting
-    const dreamAmbient = new THREE.AmbientLight(0xffffff, 1.35);
+    const dreamAmbient = new THREE.AmbientLight(0xfffbf0, 1.25);
     this.levelRootGroup.add(dreamAmbient);
 
-    // Natural sky & meadow bounce light
-    const hemiLight = new THREE.HemisphereLight(0x60a5fa, 0x4ade80, 0.85);
+    // Natural sky & meadow bounce light (soft lavender-sky to sage-green ground)
+    const hemiLight = new THREE.HemisphereLight(0xa5b4fc, 0x86efac, 0.85);
     this.levelRootGroup.add(hemiLight);
 
-    // 2. Fluffy Puffy White Dream Clouds drifting in the sky
+    // 2. Fluffy White Dream Clouds drifting peacefully across the sky
     this.spawnDreamClouds();
 
-    // 3. Elevated Continuous Rolling Meadow Terrain
+    // 3. Floating Dandelion / Dream Dust Motes drifting over the rolling meadow
+    this.spawnDreamMotes();
+
+    // 4. Elevated Continuous Rolling Meadow Terrain
     const terrainSize = 90;
     const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 72, 72);
     terrainGeo.rotateX(-Math.PI / 2);
@@ -739,24 +742,24 @@ export class LiminalWorld {
     grassTex.repeat.set(16, 16);
     const terrainMat = new THREE.MeshStandardMaterial({
       map: grassTex,
-      roughness: 0.85,
-      metalness: 0.05,
+      roughness: 0.88,
+      metalness: 0.02,
     });
     const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
     terrainMesh.receiveShadow = true;
     terrainMesh.userData = { surface: 'carpet' }; // soft grass footsteps
     this.levelRootGroup.add(terrainMesh);
 
-    // 4. Solitary White Gateway Door on Eastern Summit Knoll
+    // 5. Solitary White Gateway Door on Eastern Summit Knoll
     const exitX = labyrinth.exitRoom.x * this.roomSize;
     const exitZ = labyrinth.exitRoom.z * this.roomSize;
     const exitGroundY = this.getGroundHeight(exitX, exitZ);
     this.buildDreamcoreGatewayDoor(exitX, exitZ, exitGroundY);
 
-    // 5. Surreal Dreamcore Props (Floating Monoliths, Doric Columns, Solitary Bench & Orb Lamp)
+    // 6. Surreal Dreamcore Props (Floating Monoliths, Doric Columns, Solitary Bench & Orb Lamp)
     this.spawnDreamcoreProps();
 
-    // 6. Spawn Lore Items (Nostalgic Postcards / Notes)
+    // 7. Spawn Lore Items (Nostalgic Postcards / Notes)
     labyrinth.rooms.forEach((room) => {
       const rx = room.x * this.roomSize;
       const rz = room.z * this.roomSize;
@@ -765,31 +768,83 @@ export class LiminalWorld {
       });
     });
 
-    // 7. Set Player Spawn on Elevated Ground in Starting Meadow
+    // 8. Set Player Spawn on Elevated Ground in Starting Meadow
     const spawnX = labyrinth.spawnRoom.x * this.roomSize;
     const spawnZ = labyrinth.spawnRoom.z * this.roomSize;
     const spawnY = this.getGroundHeight(spawnX, spawnZ);
     this.camera.position.set(spawnX, 1.6 + spawnY, spawnZ);
   }
 
-  // Fluffy cartoon 3D clouds floating across the vibrant sky
+  // Floating Dandelion / Dream Dust Motes drifting over the rolling meadow
+  private spawnDreamMotes() {
+    const particleCount = 280;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+      const x = Math.random() * 80 - 15;
+      const z = Math.random() * 80 - 15;
+      const ground = this.getGroundHeight(x, z);
+      const y = ground + 0.6 + Math.random() * 8.5;
+
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    // Circular particle texture via tiny 32x32 off-screen canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d')!;
+    const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    grad.addColorStop(0.35, 'rgba(254, 243, 199, 0.85)');
+    grad.addColorStop(0.7, 'rgba(253, 230, 138, 0.3)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 32, 32);
+    const moteTex = new THREE.CanvasTexture(canvas);
+
+    const material = new THREE.PointsMaterial({
+      color: 0xfffbeb,
+      size: 0.45,
+      map: moteTex,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    const motes = new THREE.Points(geometry, material);
+    this.levelRootGroup.add(motes);
+    this.dreamAnimatedObjects.push({
+      type: 'motes',
+      obj: motes,
+      userData: {},
+    });
+  }
+
+  // Soft dream 3D clouds floating peacefully across the sky
   private spawnDreamClouds() {
     const cloudMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.2,
-      emissive: 0xffffff,
-      emissiveIntensity: 0.25,
+      color: 0xfffdf5,
+      roughness: 0.6,
+      emissive: 0xfffbeb,
+      emissiveIntensity: 0.15,
     });
 
     const cloudPositions = [
       { x: 5, y: 32, z: 10, scale: 3.5 },
-      { x: 25, y: 36, z: 2, scale: 4.2 },
+      { x: 25, y: 38, z: 2, scale: 4.2 },
       { x: 45, y: 30, z: 15, scale: 3.8 },
       { x: 12, y: 34, z: 32, scale: 3.0 },
-      { x: 38, y: 38, z: 36, scale: 4.5 },
+      { x: 38, y: 40, z: 36, scale: 4.5 },
       { x: 20, y: 33, z: 50, scale: 3.6 },
-      { x: 50, y: 35, z: 52, scale: 4.0 },
-      { x: -5, y: 31, z: 25, scale: 3.4 },
+      { x: 50, y: 36, z: 52, scale: 4.0 },
+      { x: -5, y: 32, z: 25, scale: 3.4 },
     ];
 
     cloudPositions.forEach((cp, idx) => {
@@ -815,7 +870,7 @@ export class LiminalWorld {
       cloudGroup.userData = {
         isDreamCloud: true,
         baseX: cp.x,
-        speed: 0.2 + (idx % 3) * 0.1,
+        speed: 0.16 + (idx % 3) * 0.08,
       };
       this.levelRootGroup.add(cloudGroup);
       this.dreamAnimatedObjects.push({ type: 'cloud', obj: cloudGroup, userData: cloudGroup.userData });
@@ -834,7 +889,6 @@ export class LiminalWorld {
     const step1 = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.25, 4.2), stepMat);
     step1.position.set(0, 0.125, 0);
     group.add(step1);
-    // ponytail: do not add full blocking wall collider to step so player can walk right up to gateway door
 
     const step2 = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.25, 3.2), stepMat);
     step2.position.set(0, 0.375, 0);
@@ -869,14 +923,14 @@ export class LiminalWorld {
     knob.position.set(0.7, 1.8, 0.16);
     group.add(knob);
 
-    // Ethereal Header Plaque: "THE THRESHOLD"
-    const plaqueGeo = new THREE.BoxGeometry(1.8, 0.35, 0.12);
-    const plaqueMat = new THREE.MeshStandardMaterial({ color: 0x312e81, roughness: 0.3 });
+    // Ethereal Header Plaque: "THE THRESHOLD // TO THE UNKNOWN"
+    const plaqueGeo = new THREE.BoxGeometry(2.2, 0.35, 0.12);
+    const plaqueMat = new THREE.MeshStandardMaterial({ color: 0x333b56, roughness: 0.3 });
     const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);
     plaque.position.set(0, 3.55, 0.12);
     group.add(plaque);
 
-    // Generous Interaction Hitbox (transparent mesh so raycaster hits it 100% reliably)
+    // Generous Interaction Hitbox
     const hitBox = new THREE.Mesh(
       new THREE.BoxGeometry(4.5, 4.0, 4.5),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
@@ -991,27 +1045,27 @@ export class LiminalWorld {
     globeLight.position.set(benchCenter.x + 1.8, benchGround + 3.6, benchCenter.z);
     this.levelRootGroup.add(globeLight);
 
-    // 4. Nostalgic Surreal Rainbow Arch (Classic Dreamcore Playground Element)
+    // 4. Nostalgic Faded Pastel Prism Arch
     const archCenter = { x: 26, z: 38 };
     const archGround = this.getGroundHeight(archCenter.x, archCenter.z);
-    const rainbowColors = [0xef4444, 0xf97316, 0xfacc15, 0x22c55e, 0x06b6d4, 0x8b5cf6];
+    const pastelArchColors = [0xfca5a5, 0xfdba74, 0xfef08a, 0xbbf7d0, 0xa5f3fc, 0xc4b5fd];
 
-    rainbowColors.forEach((col, idx) => {
+    pastelArchColors.forEach((col, idx) => {
       const radius = 3.6 - idx * 0.22;
-      const archGeo = new THREE.TorusGeometry(radius, 0.1, 8, 32, Math.PI);
+      const archGeo = new THREE.TorusGeometry(radius, 0.09, 8, 32, Math.PI);
       const archMat = new THREE.MeshStandardMaterial({
         color: col,
         emissive: col,
-        emissiveIntensity: 0.45,
-        roughness: 0.25,
+        emissiveIntensity: 0.25,
+        roughness: 0.4,
       });
       const archMesh = new THREE.Mesh(archGeo, archMat);
       archMesh.position.set(archCenter.x, archGround + 0.1, archCenter.z);
       this.levelRootGroup.add(archMesh);
     });
 
-    // 5. Floating Colorful Dream Balloons
-    const balloonColors = [0xf43f5e, 0xfacc15, 0x06b6d4, 0xa855f7, 0x22c55e, 0xfb7185, 0x38bdf8];
+    // 5. Floating Muted Pastel Dream Balloons
+    const balloonColors = [0xfb7185, 0xfde68a, 0xa5f3fc, 0xc4b5fd, 0xbbf7d0, 0xfecdd3, 0xbae6fd];
     const balloonCoords = [
       { x: 14, z: 20, h: 3.2 },
       { x: 15, z: 21, h: 4.1 },
@@ -1028,14 +1082,14 @@ export class LiminalWorld {
       const balloonGroup = new THREE.Group();
       balloonGroup.position.set(b.x, bGround, b.z);
 
-      // Glossy oval balloon
+      // Soft oval balloon
       const balloonGeo = new THREE.SphereGeometry(0.35, 16, 16);
       balloonGeo.scale(1.0, 1.25, 1.0);
       const balloonMat = new THREE.MeshStandardMaterial({
         color: col,
         emissive: col,
-        emissiveIntensity: 0.35,
-        roughness: 0.15,
+        emissiveIntensity: 0.2,
+        roughness: 0.3,
       });
       const balloon = new THREE.Mesh(balloonGeo, balloonMat);
       balloon.position.y = b.h;
@@ -1061,7 +1115,7 @@ export class LiminalWorld {
     // 6. The Forgotten Meadow Playground (A-Frame Swings & Retro Slide)
     const playCenter = { x: 20, z: 18 };
     const playGround = this.getGroundHeight(playCenter.x, playCenter.z);
-    const swingFrameMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.5 });
+    const swingFrameMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6 });
     const woodSeatMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.7 });
 
     const topBar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 5.2, 8), swingFrameMat);
@@ -1099,7 +1153,7 @@ export class LiminalWorld {
       this.dreamAnimatedObjects.push({ type: 'swing', obj: swingPivot, userData: swingPivot.userData });
     });
 
-    const slideMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 });
+    const slideMat = new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.4 });
     const slideChute = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 4.0), slideMat);
     slideChute.position.set(playCenter.x + 3.8, playGround + 1.2, playCenter.z + 1.2);
     slideChute.rotation.x = -0.45;
@@ -1112,7 +1166,7 @@ export class LiminalWorld {
     const boothGroup = new THREE.Group();
     boothGroup.position.set(boothPos.x, boothGround, boothPos.z);
 
-    const boothFrameMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4 });
+    const boothFrameMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.5 });
     const glassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.1 });
 
     const bBase = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 1.4), boothFrameMat);
@@ -1165,7 +1219,7 @@ export class LiminalWorld {
 
     const cloudBalcony = new THREE.Mesh(
       new THREE.CylinderGeometry(2.0, 2.0, 0.4, 16),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, emissive: 0xffffff, emissiveIntensity: 0.3 })
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, emissive: 0xfffbeb, emissiveIntensity: 0.2 })
     );
     cloudBalcony.position.set(stairPos.x, stairGround + 4.4, stairPos.z + 9 * 0.7 + 1.2);
     this.levelRootGroup.add(cloudBalcony);
@@ -1194,7 +1248,7 @@ export class LiminalWorld {
     crtGlow.position.set(lawnCenter.x, lawnGround + 1.1, lawnCenter.z + 0.5);
     this.levelRootGroup.add(crtGlow);
 
-    const monoblocMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
+    const monoblocMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
     for (let c = 0; c < 6; c++) {
       const angle = (c / 6) * Math.PI * 2;
       const cx = lawnCenter.x + Math.cos(angle) * 2.8;
@@ -1214,14 +1268,14 @@ export class LiminalWorld {
       this.wallColliders.push(new THREE.Box3().setFromObject(chairSeat));
     }
 
-    // 10. Giant Pastel Toy Megaliths (Nursery Stonehenge)
-    const toyCenter = { x: 38, z: 28 };
-    const pastelMats = [
-      new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.4 }),
-      new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.4 }),
-      new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 }),
-      new THREE.MeshStandardMaterial({ color: 0x4ade80, roughness: 0.4 }),
-      new THREE.MeshStandardMaterial({ color: 0xa78bfa, roughness: 0.4 }),
+    // 10. Surreal Pastel Plaster Sculptures
+    const sculptureCenter = { x: 38, z: 28 };
+    const plasterMats = [
+      new THREE.MeshStandardMaterial({ color: 0xfecdd3, roughness: 0.5 }), // Faded dusty rose
+      new THREE.MeshStandardMaterial({ color: 0xbae6fd, roughness: 0.5 }), // Faded sky
+      new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.5 }), // Pale butter
+      new THREE.MeshStandardMaterial({ color: 0xbbf7d0, roughness: 0.5 }), // Muted sage
+      new THREE.MeshStandardMaterial({ color: 0xddd6fe, roughness: 0.5 }), // Pale lavender
     ];
 
     const blockConfigs = [
@@ -1233,21 +1287,21 @@ export class LiminalWorld {
     ];
 
     blockConfigs.forEach((cfg) => {
-      const bx = toyCenter.x + cfg.ox;
-      const bz = toyCenter.z + cfg.oz;
+      const bx = sculptureCenter.x + cfg.ox;
+      const bz = sculptureCenter.z + cfg.oz;
       const bg = this.getGroundHeight(bx, bz);
       let mesh: THREE.Mesh;
       if (cfg.type === 'box') {
-        mesh = new THREE.Mesh(new THREE.BoxGeometry(cfg.s, cfg.s, cfg.s), pastelMats[cfg.matIdx]);
+        mesh = new THREE.Mesh(new THREE.BoxGeometry(cfg.s, cfg.s, cfg.s), plasterMats[cfg.matIdx]);
         mesh.position.set(bx, bg + cfg.s / 2, bz);
       } else if (cfg.type === 'cone') {
-        mesh = new THREE.Mesh(new THREE.ConeGeometry(cfg.s * 0.6, cfg.s * 1.3, 16), pastelMats[cfg.matIdx]);
+        mesh = new THREE.Mesh(new THREE.ConeGeometry(cfg.s * 0.6, cfg.s * 1.3, 16), plasterMats[cfg.matIdx]);
         mesh.position.set(bx, bg + cfg.s * 0.65, bz);
       } else if (cfg.type === 'cylinder') {
-        mesh = new THREE.Mesh(new THREE.CylinderGeometry(cfg.s * 0.5, cfg.s * 0.5, cfg.s, 16), pastelMats[cfg.matIdx]);
+        mesh = new THREE.Mesh(new THREE.CylinderGeometry(cfg.s * 0.5, cfg.s * 0.5, cfg.s, 16), plasterMats[cfg.matIdx]);
         mesh.position.set(bx, bg + cfg.s / 2, bz);
       } else {
-        mesh = new THREE.Mesh(new THREE.SphereGeometry(cfg.s * 0.55, 16, 16), pastelMats[cfg.matIdx]);
+        mesh = new THREE.Mesh(new THREE.SphereGeometry(cfg.s * 0.55, 16, 16), plasterMats[cfg.matIdx]);
         mesh.position.set(bx, bg + cfg.s * 0.55, bz);
       }
       this.levelRootGroup.add(mesh);
@@ -1269,7 +1323,7 @@ export class LiminalWorld {
 
     const boardPlaque = new THREE.Mesh(
       new THREE.BoxGeometry(5.0, 2.2, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 })
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 })
     );
     boardPlaque.position.set(bBoardPos.x, bBoardGround + 3.0, bBoardPos.z);
     this.levelRootGroup.add(boardPlaque);
@@ -1714,7 +1768,7 @@ export class LiminalWorld {
       }
     }
 
-    // Floating monolith rotation, cloud drift & balloon sway in Dreamcore (direct array, zero scene traversal)
+    // Floating monolith rotation, cloud drift, motes sway & balloon bob in Dreamcore (direct array, zero scene traversal)
     if (this.currentLevel === 0 && this.dreamAnimatedObjects.length > 0) {
       const timeSec = performance.now() * 0.001;
       for (let i = 0; i < this.dreamAnimatedObjects.length; i++) {
@@ -1727,14 +1781,17 @@ export class LiminalWorld {
           obj.position.y = d.baseY + Math.sin(timeSec * 0.8 + d.bobPhase) * 0.35;
         } else if (entry.type === 'cloud') {
           obj.position.x += delta * d.speed;
-          if (obj.position.x > 75) {
-            obj.position.x = -25;
+          if (obj.position.x > 85) {
+            obj.position.x = -35;
           }
         } else if (entry.type === 'balloon') {
           obj.position.y = d.baseY + Math.sin(timeSec * 1.5 + d.phase) * 0.18;
           obj.rotation.z = Math.sin(timeSec * 1.2 + d.phase) * 0.08;
         } else if (entry.type === 'swing') {
           obj.rotation.x = Math.sin(timeSec * 1.3 + d.phase) * 0.14;
+        } else if (entry.type === 'motes') {
+          obj.rotation.y = timeSec * 0.015;
+          obj.position.y = Math.sin(timeSec * 0.4) * 0.25;
         }
       }
     }
