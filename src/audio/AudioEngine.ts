@@ -206,10 +206,10 @@ class AudioEngineClass {
     }
 
     if (level === 0) {
-      // Level 0: Dreamcore Sanctuary (Peaceful lush 4-chord synth pad progression, gentle breeze, wind chimes, ZERO horror drone)
+      // Level 0: Dreamcore Sanctuary (Prominent lush 4-chord synth pad progression, gentle subtle wind chimes, ZERO horror drone)
       if (this.humGain) this.humGain.gain.setTargetAtTime(0.0, now, 0.4);
       if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.0, now, 0.4);
-      if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.28, now, 0.8);
+      if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.36, now, 0.8);
 
       // Start Dreamcore Chord Progression Loop (Fmaj9 -> Em7 -> Dm9 -> Cmaj9)
       this.dreamcoreChordIndex = 0;
@@ -220,12 +220,12 @@ class AudioEngineClass {
         this.applyDreamcoreChord(this.dreamcoreChordIndex);
       }, 7500);
 
-      // Play soft periodic wind chimes
+      // Play very gentle, occasional background wind chimes (subtle ambient sparkle)
       this.dreamcoreChimeTimer = window.setInterval(() => {
-        if (Math.random() > 0.35) {
+        if (Math.random() > 0.45) {
           this.playDreamcoreChime();
         }
-      }, 6000);
+      }, 10000);
     } else {
       if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.0, now, 0.4);
       this.dreamcoreChordIndex = 0;
@@ -258,34 +258,34 @@ class AudioEngineClass {
     this.dreamcoreGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
     this.dreamcoreGain.connect(this.masterGain);
 
-    // 1. Synth Pad Resonant Lowpass Filter (Warm 24dB-style analog feel: 1350 Hz cutoff with Q=2.2)
+    // 1. Synth Pad Resonant Lowpass Filter (Warm 24dB-style analog feel: 1800 Hz cutoff with Q=2.0)
     const masterPadFilter = this.ctx.createBiquadFilter();
     masterPadFilter.type = 'lowpass';
-    masterPadFilter.frequency.setValueAtTime(1350, this.ctx.currentTime);
-    masterPadFilter.Q.setValueAtTime(2.2, this.ctx.currentTime);
+    masterPadFilter.frequency.setValueAtTime(1800, this.ctx.currentTime);
+    masterPadFilter.Q.setValueAtTime(2.0, this.ctx.currentTime);
 
-    // Breathing Filter LFO: slowly sweeps filter between 800 Hz and 1900 Hz (~14s cycle)
+    // Breathing Filter LFO: slowly sweeps filter between 1150 Hz and 2450 Hz (~14s cycle)
     const filterLfo = this.ctx.createOscillator();
     filterLfo.type = 'sine';
     filterLfo.frequency.setValueAtTime(0.07, this.ctx.currentTime);
     const filterLfoGain = this.ctx.createGain();
-    filterLfoGain.gain.setValueAtTime(550, this.ctx.currentTime);
+    filterLfoGain.gain.setValueAtTime(650, this.ctx.currentTime);
     filterLfo.connect(filterLfoGain);
     filterLfoGain.connect(masterPadFilter.frequency);
     filterLfo.start();
 
-    // Analog Tape Drift Pitch LFO: subtle +/- 4 cents vibrato across voices
+    // Analog Tape Drift Pitch LFO: subtle +/- 4.5 cents vibrato across voices
     const tapeLfo = this.ctx.createOscillator();
     tapeLfo.type = 'sine';
     tapeLfo.frequency.setValueAtTime(0.22, this.ctx.currentTime);
     const tapeLfoGain = this.ctx.createGain();
-    tapeLfoGain.gain.setValueAtTime(4.0, this.ctx.currentTime);
+    tapeLfoGain.gain.setValueAtTime(4.5, this.ctx.currentTime);
     tapeLfo.connect(tapeLfoGain);
     tapeLfo.start();
 
-    // Pad sub-gain for dynamic breath swells between chord transitions
+    // Pad sub-gain for prominent musical chords & dynamic breath swells
     this.dreamcorePadGain = this.ctx.createGain();
-    this.dreamcorePadGain.gain.setValueAtTime(0.24, this.ctx.currentTime);
+    this.dreamcorePadGain.gain.setValueAtTime(0.65, this.ctx.currentTime);
     masterPadFilter.connect(this.dreamcorePadGain);
     this.dreamcorePadGain.connect(this.dreamcoreGain);
 
@@ -299,18 +299,18 @@ class AudioEngineClass {
 
     const bassFilter = this.ctx.createBiquadFilter();
     bassFilter.type = 'lowpass';
-    bassFilter.frequency.setValueAtTime(200, this.ctx.currentTime);
+    bassFilter.frequency.setValueAtTime(220, this.ctx.currentTime);
     bassFilter.Q.setValueAtTime(0.7, this.ctx.currentTime);
 
     const bassGain = this.ctx.createGain();
-    bassGain.gain.setValueAtTime(0.035, this.ctx.currentTime); // gentle low anchor, non-boomy
+    bassGain.gain.setValueAtTime(0.045, this.ctx.currentTime); // gentle warm anchor
 
     this.dreamcoreBassOsc.connect(bassFilter);
     bassFilter.connect(bassGain);
     bassGain.connect(this.dreamcoreGain);
     this.dreamcoreBassOsc.start();
 
-    // 3. Polyphonic Synth Pad Voice Oscillators (Lush detuned sawtooth + warm triangle pairs)
+    // 3. Polyphonic Synth Pad Voice Oscillators (Prominent detuned sawtooth + warm triangle pairs)
     this.dreamcoreVoiceOscs = [];
     const voiceCount = initChord.voices.length;
 
@@ -326,7 +326,7 @@ class AudioEngineClass {
       tapeLfoGain.connect(osc.detune);
 
       const voiceGain = this.ctx.createGain();
-      voiceGain.gain.setValueAtTime(0.055, this.ctx.currentTime);
+      voiceGain.gain.setValueAtTime(0.14, this.ctx.currentTime);
 
       // Stereo field spread
       const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
@@ -368,7 +368,7 @@ class AudioEngineClass {
     breezeFilter.Q.setValueAtTime(0.8, this.ctx.currentTime);
 
     const breezeGain = this.ctx.createGain();
-    breezeGain.gain.setValueAtTime(0.045, this.ctx.currentTime);
+    breezeGain.gain.setValueAtTime(0.04, this.ctx.currentTime);
 
     breeze.connect(breezeFilter);
     breezeFilter.connect(breezeGain);
@@ -399,8 +399,8 @@ class AudioEngineClass {
     if (this.dreamcorePadGain) {
       this.dreamcorePadGain.gain.cancelScheduledValues(now);
       this.dreamcorePadGain.gain.setValueAtTime(this.dreamcorePadGain.gain.value, now);
-      this.dreamcorePadGain.gain.setTargetAtTime(0.18, now, 0.35);
-      this.dreamcorePadGain.gain.setTargetAtTime(0.26, now + 0.9, 1.2);
+      this.dreamcorePadGain.gain.setTargetAtTime(0.48, now, 0.35);
+      this.dreamcorePadGain.gain.setTargetAtTime(0.68, now + 0.9, 1.2);
     }
 
     // 4. Soft nostalgic bell / music box chime note on the downbeat
@@ -423,12 +423,12 @@ class AudioEngineClass {
 
     const gain1 = this.ctx.createGain();
     gain1.gain.setValueAtTime(0.0001, startTime + 0.06);
-    gain1.gain.linearRampToValueAtTime(0.075, startTime + 0.10);
+    gain1.gain.linearRampToValueAtTime(0.035, startTime + 0.10);
     gain1.gain.exponentialRampToValueAtTime(0.0001, startTime + 4.2);
 
     const gain2 = this.ctx.createGain();
     gain2.gain.setValueAtTime(0.0001, startTime + 0.06);
-    gain2.gain.linearRampToValueAtTime(0.03, startTime + 0.10);
+    gain2.gain.linearRampToValueAtTime(0.012, startTime + 0.10);
     gain2.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.5);
 
     osc1.connect(gain1);
@@ -462,7 +462,7 @@ class AudioEngineClass {
 
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0.001, now + delay);
-      gain.gain.linearRampToValueAtTime(0.12, now + delay + 0.015);
+      gain.gain.linearRampToValueAtTime(0.022, now + delay + 0.015);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 2.8);
 
       osc.connect(gain);
