@@ -33,12 +33,19 @@ const GameContainer: React.FC = () => {
   const interactionTargetRef = useRef<InteractionTarget | null>(null);
   const [activeInspectItem, setActiveInspectItem] = useState<WorldItem | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const isPausedRef = useRef(false);
+  const lastTimeRef = useRef(performance.now());
   const [isVictory, setIsVictory] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [currentLevel, setCurrentLevel] = useState<number>(1);
   const currentLevelRef = useRef<number>(1);
   const labyrinthRef = useRef<GeneratedLabyrinth | null>(null);
   const handleInteractRef = useRef<() => void>(() => {});
+  const gameStateRef = useRef<GameState>(gameState);
+
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
 
   useEffect(() => {
     currentLevelRef.current = currentLevel;
@@ -92,6 +99,79 @@ const GameContainer: React.FC = () => {
     }
   }, [settings.mouseSensitivity, settings.headBobIntensity]);
 
+  // Start Main Menu procedural ambient pad on start screen
+  useEffect(() => {
+    if (gameState === 'start') {
+      AudioEngine.startMenuAmbience('main');
+    }
+  }, [gameState]);
+
+  // Centralized Pause & Resume System
+  const pauseGame = () => {
+    if (gameStateRef.current !== 'playing' || isPausedRef.current) return;
+    isPausedRef.current = true;
+    setIsSettingsOpen(true);
+    controlsRef.current?.unlock();
+    AudioEngine.duckGameplayAudio(true);
+    AudioEngine.startMenuAmbience('pause');
+  };
+
+  const resumeGame = () => {
+    isPausedRef.current = false;
+    setIsSettingsOpen(false);
+    lastTimeRef.current = performance.now();
+    AudioEngine.duckGameplayAudio(false);
+    AudioEngine.stopMenuAmbience(0.6);
+    controlsRef.current?.requestLock();
+  };
+
+  const handleReturnToMainMenu = () => {
+    isPausedRef.current = false;
+    setIsSettingsOpen(false);
+    controlsRef.current?.unlock();
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (worldRef.current) {
+      worldRef.current.dispose();
+      worldRef.current = null;
+    }
+    if (controlsRef.current) {
+      controlsRef.current.dispose();
+      controlsRef.current = null;
+    }
+    AudioEngine.setLevelAmbiance(-1);
+    AudioEngine.startMenuAmbience('main');
+    setGameState('start');
+  };
+
+  // Robust auto-pause on window blur, tab visibility change or pointer lock escape
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && gameStateRef.current === 'playing' && !isPausedRef.current) {
+        pauseGame();
+      }
+    };
+    const handleBlur = () => {
+      if (gameStateRef.current === 'playing' && !isPausedRef.current) {
+        pauseGame();
+      }
+    };
+    const handlePointerLockChange = () => {
+      if (!document.pointerLockElement && gameStateRef.current === 'playing' && !isPausedRef.current) {
+        pauseGame();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('pointerlockchange', handlePointerLockChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('pointerlockchange', handlePointerLockChange);
+    };
+  }, []);
+
   // Pointer lock release safeguard
   useEffect(() => {
     if (gameState !== 'playing' || isSettingsOpen) {
@@ -106,6 +186,11 @@ const GameContainer: React.FC = () => {
   const handleStartGame = (seed: string, startLevel: number = 1) => {
     AudioEngine.init();
     AudioEngine.resumeContext();
+    AudioEngine.stopMenuAmbience(0.5);
+
+    isPausedRef.current = false;
+    setIsSettingsOpen(false);
+    lastTimeRef.current = performance.now();
 
     const chosenLevel = Math.max(0, Math.min(4, startLevel));
     setCurrentLevel(chosenLevel);
@@ -128,7 +213,7 @@ const GameContainer: React.FC = () => {
     setVisitedRooms(initialVisited);
 
     setGameState('playing');
-    // ponytail: synchronously request lock on direct user start gesture
+    // synchronously request lock on direct user start gesture
     controlsRef.current?.requestLock();
   };
 
@@ -152,9 +237,8 @@ const GameContainer: React.FC = () => {
     newVisited.add(`${nextGen.spawnRoom.x},${nextGen.spawnRoom.z}`);
     setVisitedRooms(newVisited);
 
-    setIsSettingsOpen(false);
+    resumeGame();
     triggerToast(`SHIFTING SECTOR // ${nextGen.levelTitle}...`, 5000);
-    controlsRef.current?.requestLock();
   };
 
   // Sync difficulty dynamically
@@ -200,7 +284,7 @@ const GameContainer: React.FC = () => {
           AudioEngine.playFootstep(surface, isSprinting);
         },
         onOpenSettings: () => {
-          setIsSettingsOpen(true);
+          pauseGame();
         },
         onToggleMinimap: () => {
           setIsMinimapOpen((prev) => !prev);
@@ -220,94 +304,101 @@ const GameContainer: React.FC = () => {
       }
       entityRef.current = entity;
 
-      let lastTime = performance.now();
+      lastTimeRef.current = performance.now();
 
       const gameLoop = (now: number) => {
-        const delta = Math.min((now - lastTime) / 1000, 0.1);
-        lastTime = now;
-
-        if (!isSettingsOpen) {
-          const currentLvl = currentLevelRef.current;
-          if (currentLvl === 2) {
-            controls.speedMultiplier = 0.65; // Slowness from wading in water
-          } else {
-            controls.speedMultiplier = 1.0;
+        // True Pause: completely freeze simulation, player inputs, delta clock, battery, and entity AI
+        if (isPausedRef.current || gameStateRef.current !== 'playing') {
+          lastTimeRef.current = now;
+          if (worldRef.current && isPausedRef.current && gameStateRef.current === 'playing') {
+            worldRef.current.renderOnly();
           }
+          animFrameRef.current = requestAnimationFrame(gameLoop);
+          return;
+        }
 
-          controls.update(delta, (pos) => world.isPositionValid(pos));
-          world.update(delta);
+        const delta = Math.min((now - lastTimeRef.current) / 1000, 0.1);
+        lastTimeRef.current = now;
 
-          const px = world.camera.position.x;
-          const pz = world.camera.position.z;
-          const rx = Math.round(px / world.roomSize);
-          const rz = Math.round(pz / world.roomSize);
+        const currentLvl = currentLevelRef.current;
+        if (currentLvl === 2) {
+          controls.speedMultiplier = 0.65; // Slowness from wading in water
+        } else {
+          controls.speedMultiplier = 1.0;
+        }
 
-          // Update visited rooms only on room boundaries (avoids 60Hz React state queue spam)
-          if (rx !== lastRoomCoordsRef.current.rx || rz !== lastRoomCoordsRef.current.rz) {
-            lastRoomCoordsRef.current = { rx, rz };
-            const roomKey = `${rx},${rz}`;
-            setVisitedRooms((prev) => {
-              if (!prev.has(roomKey)) {
-                const next = new Set(prev);
-                next.add(roomKey);
-                return next;
-              }
-              return prev;
-            });
-          }
+        controls.update(delta, (pos) => world.isPositionValid(pos));
+        world.update(delta);
 
-          // Camera heading using zero-allocation scratch vector
-          world.camera.getWorldDirection(_scratchCamDir);
-          const headingDeg = Math.atan2(_scratchCamDir.x, -_scratchCamDir.z) * (180 / Math.PI);
+        const px = world.camera.position.x;
+        const pz = world.camera.position.z;
+        const rx = Math.round(px / world.roomSize);
+        const rz = Math.round(pz / world.roomSize);
 
-          // Throttled UI state updates (~12Hz / 80ms interval) for Minimap, Angle & Battery HUD
-          // Keeps React virtual DOM diffing minimal and preserves silky smooth 60 FPS WebGL thread
-          uiThrottleTimerRef.current += delta;
-          if (uiThrottleTimerRef.current >= 0.08) {
-            uiThrottleTimerRef.current = 0;
-            setPlayerPos({ x: px, z: pz });
-            setPlayerAngle(headingDeg);
-            setBatteryLevel(world.batteryLevel);
-            setFlashlightOn(world.flashlightOn);
-          }
-
-          // Selective Interaction Target Dispatch: only trigger re-render if target actually changed
-          const target = world.checkInteraction();
-          interactionTargetRef.current = target;
-          setInteractionTarget((prev) => {
-            if (!prev && !target) return prev;
-            if (
-              prev &&
-              target &&
-              prev.type === target.type &&
-              prev.prompt === target.prompt &&
-              prev.item?.id === target.item?.id
-            ) {
-              return prev;
+        // Update visited rooms only on room boundaries (avoids 60Hz React state queue spam)
+        if (rx !== lastRoomCoordsRef.current.rx || rz !== lastRoomCoordsRef.current.rz) {
+          lastRoomCoordsRef.current = { rx, rz };
+          const roomKey = `${rx},${rz}`;
+          setVisitedRooms((prev) => {
+            if (!prev.has(roomKey)) {
+              const next = new Set(prev);
+              next.add(roomKey);
+              return next;
             }
-            return target;
+            return prev;
           });
+        }
 
-          if (labyrinth.level === 0) {
-            AudioEngine.updateProximityStatic(0);
-          } else {
-            randomHeartbeatTimerRef.current -= delta;
-            if (randomHeartbeatTimerRef.current <= 0) {
-              randomHeartbeatTimerRef.current = 22 + Math.random() * 26;
-              AudioEngine.triggerParanoiaHeartbeatBurst(Math.floor(3 + Math.random() * 3));
-            }
+        // Camera heading using zero-allocation scratch vector
+        world.camera.getWorldDirection(_scratchCamDir);
+        const headingDeg = Math.atan2(_scratchCamDir.x, -_scratchCamDir.z) * (180 / Math.PI);
 
-            entity.update(
-              delta,
-              world.camera.position,
-              world.flashlightOn,
-              controls.isSprinting,
-              () => {
-                controls.unlock();
-                setGameState('jumpscare');
-              }
-            );
+        // Throttled UI state updates (~12Hz / 80ms interval) for Minimap, Angle & Battery HUD
+        uiThrottleTimerRef.current += delta;
+        if (uiThrottleTimerRef.current >= 0.08) {
+          uiThrottleTimerRef.current = 0;
+          setPlayerPos({ x: px, z: pz });
+          setPlayerAngle(headingDeg);
+          setBatteryLevel(world.batteryLevel);
+          setFlashlightOn(world.flashlightOn);
+        }
+
+        // Selective Interaction Target Dispatch: only trigger re-render if target actually changed
+        const target = world.checkInteraction();
+        interactionTargetRef.current = target;
+        setInteractionTarget((prev) => {
+          if (!prev && !target) return prev;
+          if (
+            prev &&
+            target &&
+            prev.type === target.type &&
+            prev.prompt === target.prompt &&
+            prev.item?.id === target.item?.id
+          ) {
+            return prev;
           }
+          return target;
+        });
+
+        if (labyrinth.level === 0) {
+          AudioEngine.updateProximityStatic(0);
+        } else {
+          randomHeartbeatTimerRef.current -= delta;
+          if (randomHeartbeatTimerRef.current <= 0) {
+            randomHeartbeatTimerRef.current = 22 + Math.random() * 26;
+            AudioEngine.triggerParanoiaHeartbeatBurst(Math.floor(3 + Math.random() * 3));
+          }
+
+          entity.update(
+            delta,
+            world.camera.position,
+            world.flashlightOn,
+            controls.isSprinting,
+            () => {
+              controls.unlock();
+              setGameState('jumpscare');
+            }
+          );
         }
 
         animFrameRef.current = requestAnimationFrame(gameLoop);
@@ -470,6 +561,8 @@ const GameContainer: React.FC = () => {
           setTimeElapsed(elapsed);
           setIsVictory(true);
           setGameState('gameover');
+          AudioEngine.setLevelAmbiance(-1);
+          AudioEngine.startMenuAmbience('main');
         }
       } else {
         // Non-blocking HUD toast alert: camera rotation is NEVER interrupted!
@@ -485,6 +578,8 @@ const GameContainer: React.FC = () => {
     setTimeElapsed(elapsed);
     setIsVictory(false);
     setGameState('gameover');
+    AudioEngine.setLevelAmbiance(-1);
+    AudioEngine.startMenuAmbience('main');
   };
 
   return (
@@ -493,12 +588,12 @@ const GameContainer: React.FC = () => {
       <div
         ref={canvasContainerRef}
         onClick={() => {
-          if (gameState === 'playing' && !isSettingsOpen && !controlsRef.current?.isLocked) {
+          if (gameState === 'playing' && !isPausedRef.current && !controlsRef.current?.isLocked) {
             controlsRef.current?.requestLock();
           }
         }}
         className={`w-full h-full ${
-          gameState === 'playing' ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'
+          gameState === 'playing' && !isPausedRef.current ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'
         }`}
       />
 
@@ -536,8 +631,7 @@ const GameContainer: React.FC = () => {
             vhsActive={settings.vhsIntensity !== 'off'}
             onCloseInspect={() => setActiveInspectItem(null)}
             onOpenSettings={() => {
-              controlsRef.current?.unlock();
-              setIsSettingsOpen(true);
+              pauseGame();
             }}
             onToggleFlashlight={() => {
               if (worldRef.current) {
@@ -566,31 +660,15 @@ const GameContainer: React.FC = () => {
       {/* Settings & In-Game Pause Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
-        onClose={() => {
-          setIsSettingsOpen(false);
-          controlsRef.current?.requestLock();
-        }}
+        onClose={resumeGame}
         onRestart={() => {
-          setIsSettingsOpen(false);
+          resumeGame();
           if (labyrinth) {
             handleStartGame(labyrinth.seed, currentLevel);
           }
         }}
         onSwitchLevel={handleSwitchLevel}
-        onMainMenu={() => {
-          setIsSettingsOpen(false);
-          controlsRef.current?.unlock();
-          if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-          if (worldRef.current) {
-            worldRef.current.dispose();
-            worldRef.current = null;
-          }
-          if (controlsRef.current) {
-            controlsRef.current.dispose();
-            controlsRef.current = null;
-          }
-          setGameState('start');
-        }}
+        onMainMenu={handleReturnToMainMenu}
         currentLevel={currentLevel}
         levelTitle={labyrinth?.levelTitle}
         seed={labyrinth?.seed}
@@ -612,6 +690,8 @@ const GameContainer: React.FC = () => {
           seed={labyrinth?.seed || 'LIMINAL-000000'}
           onRestart={() => {
             controlsRef.current?.unlock();
+            AudioEngine.setLevelAmbiance(-1);
+            AudioEngine.startMenuAmbience('main');
             setGameState('start');
           }}
         />

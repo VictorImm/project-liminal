@@ -2278,6 +2278,14 @@ export class LiminalWorld {
     this.renderer.render(this.scene, this.camera);
   }
 
+  /**
+   * Lightweight render-only pass for paused states.
+   * Renders the current camera and scene without advancing physics, battery drain, or animations.
+   */
+  public renderOnly() {
+    this.renderer.render(this.scene, this.camera);
+  }
+
   public dispose() {
     window.removeEventListener('resize', this.onResize);
     this.renderer.dispose();

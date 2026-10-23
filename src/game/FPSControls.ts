@@ -138,6 +138,9 @@ export class FPSControls {
       document.exitPointerLock?.();
     }
     this.isLocked = false;
+    this.keys = {}; // Clear any held movement keys so player does not continue sliding while paused
+    this.joystickMove = { x: 0, y: 0 };
+    this.velocity.set(0, 0, 0);
   }
 
   public setJoystickVector(x: number, y: number) {
@@ -152,6 +155,12 @@ export class FPSControls {
   }
 
   public update(delta: number, collisionCheck?: (newPos: THREE.Vector3) => boolean) {
+    // When unlocked / paused, freeze movement physics completely
+    if (!this.isLocked) {
+      this.velocity.set(0, 0, 0);
+      return;
+    }
+
     // Sync initial player position if not set
     if (this.position.lengthSq() === 0 && this.camera.position.lengthSq() > 0) {
       this.position.copy(this.camera.position);

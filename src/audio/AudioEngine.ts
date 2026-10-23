@@ -41,6 +41,42 @@ const DREAM_CHORDS: DreamChord[] = [
   },
 ];
 
+interface MenuChord {
+  name: string;
+  bass: number;
+  voices: number[];
+  bell: number;
+}
+
+// Liminal Ambience Progression: Dm9 -> Bbmaj7(#11) -> Gm9 -> Asus4(add9)
+// Calm, eerie, mysterious, slow-evolving unresolved pad textures
+const MENU_CHORDS: MenuChord[] = [
+  {
+    name: 'Dm9',
+    bass: 73.42, // D2
+    voices: [146.83, 220.0, 261.63, 329.63, 392.0], // D3, A3, C4, E4, G4
+    bell: 587.33, // D5
+  },
+  {
+    name: 'Bbmaj7(#11)',
+    bass: 58.27, // Bb1
+    voices: [116.54, 174.61, 233.08, 293.66, 370.0], // Bb2, F3, Bb3, D4, F#4
+    bell: 466.16, // Bb4
+  },
+  {
+    name: 'Gm9',
+    bass: 49.0, // G1
+    voices: [98.0, 146.83, 196.0, 293.66, 349.23], // G2, D3, G3, D4, F4
+    bell: 523.25, // C5
+  },
+  {
+    name: 'Asus4(add9)',
+    bass: 55.0, // A1
+    voices: [110.0, 164.81, 220.0, 293.66, 329.63], // A2, E3, A3, D4, E4
+    bell: 440.0, // A4
+  },
+];
+
 class AudioEngineClass {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -62,6 +98,17 @@ class AudioEngineClass {
   private enableJumpscares: boolean = true;
   private isInitialized: boolean = false;
 
+  // Dedicated Liminal Menu & Pause Ambient Synth Engine
+  private menuAmbienceGain: GainNode | null = null;
+  private menuPadFilter: BiquadFilterNode | null = null;
+  private menuBassOsc: OscillatorNode | null = null;
+  private menuVoiceOscs: OscillatorNode[] = [];
+  private menuChordTimer: number | null = null;
+  private menuChimeTimer: number | null = null;
+  private menuChordIndex: number = 0;
+  private isMenuAmbienceActive: boolean = false;
+  private currentMenuVariant: 'main' | 'pause' = 'main';
+
   public init() {
     if (this.ctx && this.ctx.state === 'running') return;
 
@@ -77,6 +124,7 @@ class AudioEngineClass {
       this.initProximityStatic();
       this.initLiminalAmbience();
       this.initDreamcoreAmbience();
+      this.initMenuAmbience();
       this.isInitialized = true;
     } catch (e) {
       console.warn('Web Audio initialization error:', e);
@@ -223,6 +271,15 @@ class AudioEngineClass {
     if (this.dreamcoreChordTimer) {
       window.clearInterval(this.dreamcoreChordTimer);
       this.dreamcoreChordTimer = null;
+    }
+
+    if (level === -1) {
+      // Main Menu / Disconnected state: silence all gameplay hums and ambient drones
+      if (this.humGain) this.humGain.gain.setTargetAtTime(0.0, now, 0.4);
+      if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.0, now, 0.4);
+      if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.0, now, 0.4);
+      this.updateProximityStatic(0);
+      return;
     }
 
     if (level === 0) {
@@ -525,6 +582,244 @@ class AudioEngineClass {
 
     osc.start(now);
     osc.stop(now + 3.6);
+  }
+
+  // --- PROCEDURAL LIMINAL MENU & PAUSE AMBIENCE ---
+  private initMenuAmbience() {
+    if (!this.ctx || !this.masterGain) return;
+
+    this.menuAmbienceGain = this.ctx.createGain();
+    this.menuAmbienceGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+    this.menuAmbienceGain.connect(this.masterGain);
+
+    // Warm resonant lowpass filter: 640Hz cutoff with gentle resonance
+    this.menuPadFilter = this.ctx.createBiquadFilter();
+    this.menuPadFilter.type = 'lowpass';
+    this.menuPadFilter.frequency.setValueAtTime(640, this.ctx.currentTime);
+    this.menuPadFilter.Q.setValueAtTime(1.8, this.ctx.currentTime);
+
+    // Filter breathing LFO: sweeps between 500 Hz and 780 Hz (~22s cycle)
+    const filterLfo = this.ctx.createOscillator();
+    filterLfo.type = 'sine';
+    filterLfo.frequency.setValueAtTime(0.045, this.ctx.currentTime);
+    const filterLfoGain = this.ctx.createGain();
+    filterLfoGain.gain.setValueAtTime(140, this.ctx.currentTime);
+    filterLfo.connect(filterLfoGain);
+    filterLfoGain.connect(this.menuPadFilter.frequency);
+    filterLfo.start();
+
+    // Subtle pitch tape drift LFO (+/- 3.2 cents)
+    const tapeLfo = this.ctx.createOscillator();
+    tapeLfo.type = 'sine';
+    tapeLfo.frequency.setValueAtTime(0.18, this.ctx.currentTime);
+    const tapeLfoGain = this.ctx.createGain();
+    tapeLfoGain.gain.setValueAtTime(3.2, this.ctx.currentTime);
+    tapeLfo.connect(tapeLfoGain);
+    tapeLfo.start();
+
+    const initChord = MENU_CHORDS[0];
+
+    // Deep warm sine sub-bass
+    this.menuBassOsc = this.ctx.createOscillator();
+    this.menuBassOsc.type = 'sine';
+    this.menuBassOsc.frequency.setValueAtTime(initChord.bass, this.ctx.currentTime);
+
+    const bassFilter = this.ctx.createBiquadFilter();
+    bassFilter.type = 'lowpass';
+    bassFilter.frequency.setValueAtTime(150, this.ctx.currentTime);
+
+    const bassGain = this.ctx.createGain();
+    bassGain.gain.setValueAtTime(0.045, this.ctx.currentTime);
+
+    this.menuBassOsc.connect(bassFilter);
+    bassFilter.connect(bassGain);
+    bassGain.connect(this.menuAmbienceGain);
+    this.menuBassOsc.start();
+
+    // Polyphonic pad voices: 5 detuned gentle sine/triangle oscillators
+    this.menuVoiceOscs = [];
+    const voiceCount = initChord.voices.length;
+
+    initChord.voices.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+
+      const staticDetune = (idx - 2) * 4.0;
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      osc.detune.setValueAtTime(staticDetune, this.ctx.currentTime);
+      tapeLfoGain.connect(osc.detune);
+
+      const voiceGain = this.ctx.createGain();
+      voiceGain.gain.setValueAtTime(0.075, this.ctx.currentTime);
+
+      const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+      if (panner) {
+        const panValue = ((idx / (voiceCount - 1)) * 2 - 1) * 0.6;
+        panner.pan.setValueAtTime(panValue, this.ctx.currentTime);
+        osc.connect(voiceGain);
+        voiceGain.connect(panner);
+        panner.connect(this.menuPadFilter!);
+      } else {
+        osc.connect(voiceGain);
+        voiceGain.connect(this.menuPadFilter!);
+      }
+
+      osc.start();
+      this.menuVoiceOscs.push(osc);
+    });
+
+    this.menuPadFilter.connect(this.menuAmbienceGain);
+
+    // Subtle filtered room air hiss / pink noise texture
+    const bufferSize = this.ctx.sampleRate * 2.5;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      data[i] = (b0 + b1 + b2) * 0.06;
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    noise.loop = true;
+
+    const noiseFilter = this.ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
+    noiseFilter.Q.setValueAtTime(1.2, this.ctx.currentTime);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.015, this.ctx.currentTime);
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(this.menuAmbienceGain);
+    noise.start();
+  }
+
+  private applyMenuChord(chordIdx: number) {
+    if (!this.ctx || !this.menuAmbienceGain) return;
+    const chord = MENU_CHORDS[chordIdx % MENU_CHORDS.length];
+    const now = this.ctx.currentTime;
+
+    // Smooth glide for bass
+    if (this.menuBassOsc) {
+      this.menuBassOsc.frequency.setTargetAtTime(chord.bass, now, 1.2);
+    }
+
+    // Smooth glide for voices
+    for (let i = 0; i < this.menuVoiceOscs.length; i++) {
+      const osc = this.menuVoiceOscs[i];
+      if (osc && chord.voices[i]) {
+        osc.frequency.setTargetAtTime(chord.voices[i], now, 1.0);
+      }
+    }
+
+    // Sparse nostalgic bell accent
+    if (this.isMenuAmbienceActive && Math.random() > 0.25) {
+      this.playMenuBell(chord.bell, now);
+    }
+  }
+
+  private playMenuBell(freq: number, startTime: number) {
+    if (!this.ctx || !this.menuAmbienceGain) return;
+
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, startTime + 0.05);
+
+    const oscHarm = this.ctx.createOscillator();
+    oscHarm.type = 'sine';
+    oscHarm.frequency.setValueAtTime(freq * 2.5, startTime + 0.05);
+
+    const gain1 = this.ctx.createGain();
+    gain1.gain.setValueAtTime(0.0001, startTime + 0.05);
+    gain1.gain.linearRampToValueAtTime(0.024, startTime + 0.09);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, startTime + 4.5);
+
+    const gain2 = this.ctx.createGain();
+    gain2.gain.setValueAtTime(0.0001, startTime + 0.05);
+    gain2.gain.linearRampToValueAtTime(0.008, startTime + 0.08);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.0);
+
+    osc.connect(gain1);
+    gain1.connect(this.menuAmbienceGain);
+
+    oscHarm.connect(gain2);
+    gain2.connect(this.menuAmbienceGain);
+
+    osc.start(startTime + 0.05);
+    osc.stop(startTime + 4.6);
+    oscHarm.start(startTime + 0.05);
+    oscHarm.stop(startTime + 2.1);
+  }
+
+  public startMenuAmbience(variant: 'main' | 'pause' = 'main') {
+    this.init();
+    this.resumeContext();
+    if (!this.ctx || !this.menuAmbienceGain) return;
+
+    this.currentMenuVariant = variant;
+    this.isMenuAmbienceActive = true;
+    const now = this.ctx.currentTime;
+
+    const targetGain = variant === 'main' ? 0.075 : 0.048;
+    this.menuAmbienceGain.gain.cancelScheduledValues(now);
+    this.menuAmbienceGain.gain.setValueAtTime(this.menuAmbienceGain.gain.value, now);
+    this.menuAmbienceGain.gain.setTargetAtTime(targetGain, now, 0.45);
+
+    if (this.menuPadFilter) {
+      const targetCutoff = variant === 'main' ? 640 : 500;
+      this.menuPadFilter.frequency.setTargetAtTime(targetCutoff, now, 0.5);
+    }
+
+    if (!this.menuChordTimer) {
+      this.menuChordIndex = 0;
+      this.applyMenuChord(0);
+      this.menuChordTimer = window.setInterval(() => {
+        this.menuChordIndex = (this.menuChordIndex + 1) % MENU_CHORDS.length;
+        this.applyMenuChord(this.menuChordIndex);
+      }, 8500);
+    }
+  }
+
+  public stopMenuAmbience(fadeDuration: number = 0.8) {
+    if (!this.ctx || !this.menuAmbienceGain) return;
+    this.isMenuAmbienceActive = false;
+    const now = this.ctx.currentTime;
+
+    this.menuAmbienceGain.gain.cancelScheduledValues(now);
+    this.menuAmbienceGain.gain.setValueAtTime(this.menuAmbienceGain.gain.value, now);
+    this.menuAmbienceGain.gain.setTargetAtTime(0.0, now, Math.max(0.1, fadeDuration / 3));
+
+    // Stop timers after fade out
+    window.setTimeout(() => {
+      if (!this.isMenuAmbienceActive) {
+        if (this.menuChordTimer) {
+          window.clearInterval(this.menuChordTimer);
+          this.menuChordTimer = null;
+        }
+      }
+    }, fadeDuration * 1000 + 100);
+  }
+
+  public duckGameplayAudio(ducked: boolean) {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    if (ducked) {
+      if (this.humGain) this.humGain.gain.setTargetAtTime(this.humGain.gain.value * 0.25, now, 0.3);
+      if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(this.ambientGain.gain.value * 0.25, now, 0.3);
+      if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(this.dreamcoreGain.gain.value * 0.2, now, 0.3);
+      this.updateProximityStatic(0);
+    } else {
+      this.setLevelAmbiance(this.activeLevel);
+    }
   }
 
   // --- PROXIMITY RADIO STATIC ---

@@ -22,6 +22,7 @@ import {
   BookOpen,
   Cog,
   ShieldCheck,
+  Compass,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -46,7 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   seed,
 }) => {
   const { settings, updateSettings, resetSettings } = useSettings();
-  const [activeTab, setActiveTab] = useState<'sectors' | 'controls' | 'settings'>('sectors');
+  const [activeTab, setActiveTab] = useState<'sectors' | 'actions' | 'settings'>('sectors');
   const [confirmRestart, setConfirmRestart] = useState(false);
   const [confirmMainMenu, setConfirmMainMenu] = useState(false);
 
@@ -87,10 +88,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const difficulties: { id: DifficultyLevel; label: string; desc: string }[] = [
-    { id: 'explorer', label: 'Explorer', desc: 'Zero entity danger. Safe architecture exploration. Immortal (Cannot die).' },
-    { id: 'easy', label: 'Easy', desc: '60s safe period. Slower stalker with audio cues.' },
-    { id: 'normal', label: 'Normal', desc: '40s safe period. Stalker actively searches halls.' },
-    { id: 'nightmare', label: 'Nightmare', desc: 'Short grace, swift aggressive entity.' },
+    { id: 'explorer', label: 'Explorer', desc: 'Zero entity hazard. Safe exploration. Immortal.' },
+    { id: 'easy', label: 'Easy', desc: '65s safe period. Slower entity with prominent audio cues.' },
+    { id: 'normal', label: 'Normal', desc: '40s safe period. Entity actively stalks deep corridors.' },
+    { id: 'nightmare', label: 'Nightmare', desc: '18s short grace, swift aggressive entity, frequent flickers.' },
   ];
 
   const sectorOptions = [
@@ -101,7 +102,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       threat: 'SAFE ZONE',
       threatColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
       icon: Sparkles,
-      desc: 'Pastel sky, undulating meadow, rolling hills. Zero danger.',
+      desc: 'Pastel sky, undulating meadow, rolling hills. Zero hazard.',
     },
     {
       lv: 1,
@@ -142,13 +143,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 md:p-6 font-mono select-none pointer-events-auto animate-in fade-in duration-150">
-      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col border border-zinc-800/90 bg-zinc-950/95 rounded-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.95),inset_0_1px_0_rgba(255,255,255,0.08)] text-zinc-100 p-5 md:p-7 overflow-hidden text-left">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-6 font-mono select-none pointer-events-auto animate-in fade-in duration-150">
+      <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col border border-zinc-800/90 bg-zinc-950/95 rounded-2xl shadow-[0_25px_80px_-15px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.06)] text-zinc-100 p-6 md:p-8 overflow-hidden text-left space-y-5">
+        
         {/* Subtle Ambient Radial Glow */}
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Top Header Bar */}
-        <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3 mb-4 shrink-0">
+        <header className="flex items-center justify-between border-b border-zinc-800/80 pb-4 shrink-0">
           <div className="flex items-center gap-3">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
@@ -156,65 +158,78 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </span>
             <div>
               <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">
-                EXPEDITION TELEMETRY // SYSTEM PAUSED
+                EXPEDITION TELEMETRY // PAUSED
               </div>
               <h2 className="text-base md:text-lg font-bold text-zinc-100 tracking-wider uppercase">
                 {levelTitle || `LEVEL ${currentLevel} // EXPEDITION`}
               </h2>
             </div>
           </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-mono text-zinc-500 border border-zinc-800 px-2.5 py-1 rounded-lg hidden sm:inline-block">
+              SEED: <span className="text-amber-400 font-bold">{seed || 'LOCAL'}</span>
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-zinc-400 hover:text-white bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 rounded-lg p-2 transition-colors cursor-pointer"
+              title="Resume Expedition [ESC]"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
+
+        {/* PRIMARY ACTION: Distinct, High-Priority Resume Button */}
+        <div className="shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="text-zinc-400 hover:text-white bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 rounded-lg p-2 transition-colors cursor-pointer"
-            title="Resume [ESC]"
+            className="w-full group relative overflow-hidden bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-400 active:scale-[0.99] text-zinc-950 font-black py-4 px-6 rounded-xl text-xs uppercase tracking-widest shadow-[0_6px_25px_rgba(245,158,11,0.25)] transition-all cursor-pointer flex items-center justify-between"
           >
-            <X className="w-4 h-4" />
+            <div className="flex items-center gap-3">
+              <Play className="w-5 h-5 fill-current transition-transform group-hover:scale-110" />
+              <span className="text-sm font-black tracking-wider">RESUME EXPEDITION</span>
+            </div>
+            <span className="text-[10px] bg-black/20 text-zinc-900 px-2.5 py-1 rounded-md font-mono font-bold tracking-wider">
+              PRESS [ESC]
+            </span>
           </button>
         </div>
 
-        {/* Diagnostic Pill Banner */}
-        <div className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800/80 rounded-lg px-3.5 py-2 text-xs text-zinc-400 mb-4 shrink-0">
-          <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>SEED:</span>
-            <span className="text-amber-400 font-bold tracking-wider">{seed || 'LIMINAL-LOCAL'}</span>
-          </span>
-          <span className="text-zinc-500 text-[11px] hidden sm:inline">PRESS [ESC] OR CLICK RESUME</span>
-        </div>
-
-        {/* Tab Navigation (UI/UX Pro Max Clean Sizing) */}
-        <div className="flex border-b border-zinc-800/80 mb-4 shrink-0 gap-1">
+        {/* Secondary Navigation Tabs with Generous Spacing */}
+        <nav className="flex border-b border-zinc-800/80 shrink-0 gap-2 pt-1">
           <button
             type="button"
             onClick={() => setActiveTab('sectors')}
-            className={`pb-2.5 px-3 md:px-4 text-xs font-bold tracking-wider uppercase transition-colors cursor-pointer border-b-2 flex items-center gap-2 ${
+            className={`pb-3 px-3 md:px-4 text-xs font-bold tracking-wider uppercase transition-colors cursor-pointer border-b-2 flex items-center gap-2 ${
               activeTab === 'sectors'
                 ? 'border-amber-500 text-amber-400'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>Sector Switcher</span>
+            <span>Sectors</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab('controls')}
-            className={`pb-2.5 px-3 md:px-4 text-xs font-bold tracking-wider uppercase transition-colors cursor-pointer border-b-2 flex items-center gap-2 ${
-              activeTab === 'controls'
+            onClick={() => setActiveTab('actions')}
+            className={`pb-3 px-3 md:px-4 text-xs font-bold tracking-wider uppercase transition-colors cursor-pointer border-b-2 flex items-center gap-2 ${
+              activeTab === 'actions'
                 ? 'border-amber-500 text-amber-400'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            <Play className="w-3.5 h-3.5" />
-            <span>Expedition Actions</span>
+            <Compass className="w-3.5 h-3.5" />
+            <span>Expedition</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('settings')}
-            className={`pb-2.5 px-3 md:px-4 text-xs font-bold tracking-wider uppercase transition-colors cursor-pointer border-b-2 flex items-center gap-2 ${
+            className={`pb-3 px-3 md:px-4 text-xs font-bold tracking-wider uppercase transition-colors cursor-pointer border-b-2 flex items-center gap-2 ${
               activeTab === 'settings'
                 ? 'border-amber-500 text-amber-400'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -223,15 +238,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Sliders className="w-3.5 h-3.5" />
             <span>Audio & Controls</span>
           </button>
-        </div>
+        </nav>
 
-        {/* Tab Body (Scrollable for mobile comfort) */}
-        <div className="overflow-y-auto flex-1 pr-1 space-y-4">
-          {/* TAB 1: SECTOR SWITCHER (Instant Fast-Travel) */}
+        {/* Tab Body: Scrollable with intentional breathing room */}
+        <div className="overflow-y-auto flex-1 pr-1.5 space-y-4">
+          
+          {/* TAB 1: SECTORS */}
           {activeTab === 'sectors' && (
-            <div className="space-y-3">
+            <div className="space-y-3 pt-1">
               <div className="flex justify-between items-center text-xs text-zinc-400">
-                <span>SELECT ANY SECTOR TO SHIFT IMMEDIATELY:</span>
+                <span>SHIFT IMMEDIATELY TO ANY LEVEL:</span>
                 <span className="text-amber-400 font-bold">CURRENT: LEVEL {currentLevel}</span>
               </div>
 
@@ -244,14 +260,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       key={s.lv}
                       type="button"
                       onClick={() => onSwitchLevel?.(s.lv)}
-                      className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex items-start justify-between gap-3 ${
+                      className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex items-start justify-between gap-3 ${
                         isCurrent
                           ? 'border-amber-500/80 bg-amber-500/10 shadow-[0_0_20px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/40'
-                          : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800/60 hover:border-zinc-700 text-zinc-300'
+                          : 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/60 hover:border-zinc-700 text-zinc-300'
                       }`}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className={`p-2.5 rounded-lg border shrink-0 ${isCurrent ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-zinc-800/80 border-zinc-700/80 text-zinc-400'}`}>
+                      <div className="flex items-start gap-3.5">
+                        <div className={`p-2.5 rounded-lg border shrink-0 ${isCurrent ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-zinc-800/80 border-zinc-700 text-zinc-400'}`}>
                           <Icon className="w-5 h-5" />
                         </div>
                         <div>
@@ -281,29 +297,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
 
           {/* TAB 2: EXPEDITION ACTIONS */}
-          {activeTab === 'controls' && (
-            <div className="space-y-3.5">
-              {/* RESUME BUTTON */}
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full group relative overflow-hidden bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 active:scale-[0.99] text-zinc-950 font-black py-4 px-5 rounded-xl text-xs uppercase tracking-widest shadow-[0_6px_20px_rgba(245,158,11,0.25)] transition-all cursor-pointer flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <Play className="w-5 h-5 fill-current" />
-                  <span className="text-sm font-bold">Resume Expedition</span>
-                </div>
-                <span className="text-[10px] bg-black/20 text-zinc-900 px-2 py-0.5 rounded font-mono font-semibold">
-                  [ESC]
-                </span>
-              </button>
-
-              {/* RESTART BUTTON */}
+          {activeTab === 'actions' && (
+            <div className="space-y-4 pt-1">
+              
+              {/* RESTART SECTOR BUTTON */}
               {confirmRestart ? (
-                <div className="border border-red-500/50 bg-red-950/20 p-3.5 rounded-xl flex items-center justify-between gap-3 animate-in fade-in duration-100">
-                  <div className="flex items-center gap-2 text-xs text-red-300">
+                <div className="border border-red-500/50 bg-red-950/20 p-4 rounded-xl flex items-center justify-between gap-3 animate-in fade-in duration-100">
+                  <div className="flex items-center gap-2.5 text-xs text-red-300">
                     <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                    <span>Restart this level from beginning?</span>
+                    <span>Restart current sector from initial spawn?</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -321,7 +323,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       }}
                       className="px-3.5 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg cursor-pointer"
                     >
-                      Confirm
+                      Restart
                     </button>
                   </div>
                 </div>
@@ -329,9 +331,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setConfirmRestart(true)}
-                  className="w-full bg-zinc-900/80 hover:bg-zinc-800/80 active:scale-[0.99] border border-zinc-800 hover:border-zinc-700 text-zinc-200 py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between"
+                  className="w-full bg-zinc-900/60 hover:bg-zinc-800/80 active:scale-[0.99] border border-zinc-800 hover:border-zinc-700 text-zinc-200 py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-3">
                     <RotateCcw className="w-4 h-4 text-amber-400" />
                     <span>Restart Sector (Reset Anchors)</span>
                   </div>
@@ -339,12 +341,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
               )}
 
-              {/* BACK TO MAIN MENU BUTTON */}
+              {/* ABORT / RETURN TO MAIN MENU */}
               {confirmMainMenu ? (
-                <div className="border border-red-500/50 bg-red-950/20 p-3.5 rounded-xl flex items-center justify-between gap-3 animate-in fade-in duration-100">
-                  <div className="flex items-center gap-2 text-xs text-red-300">
+                <div className="border border-red-500/50 bg-red-950/20 p-4 rounded-xl flex items-center justify-between gap-3 animate-in fade-in duration-100">
+                  <div className="flex items-center gap-2.5 text-xs text-red-300">
                     <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-                    <span>Abort expedition and return to menu?</span>
+                    <span>Abort expedition and return to Main Menu?</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -362,7 +364,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       }}
                       className="px-3.5 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg cursor-pointer"
                     >
-                      Exit Run
+                      Exit to Menu
                     </button>
                   </div>
                 </div>
@@ -370,31 +372,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setConfirmMainMenu(true)}
-                  className="w-full bg-zinc-900/80 hover:bg-red-950/30 active:scale-[0.99] border border-zinc-800 hover:border-red-900/50 text-zinc-300 hover:text-red-300 py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between"
+                  className="w-full bg-zinc-900/60 hover:bg-red-950/30 active:scale-[0.99] border border-zinc-800 hover:border-red-900/50 text-zinc-300 hover:text-red-300 py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-3">
                     <Home className="w-4 h-4 text-zinc-400" />
-                    <span>Back to Main Menu</span>
+                    <span>Return to Main Menu</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 font-mono">ABORT</span>
                 </button>
               )}
 
-              {/* Current Objective Reminder */}
-              <div className="border border-zinc-800/80 bg-zinc-900/40 p-4 rounded-xl text-xs leading-relaxed text-zinc-400">
-                <div className="text-zinc-200 font-bold uppercase tracking-wider mb-1 flex items-center gap-2">
+              {/* Sector Directives Info Card */}
+              <div className="border border-zinc-800/80 bg-zinc-900/30 p-4 rounded-xl text-xs leading-relaxed text-zinc-400">
+                <div className="text-zinc-200 font-bold uppercase tracking-wider mb-1.5 flex items-center gap-2">
                   <Flame className="w-4 h-4 text-amber-500" />
                   <span>Sector Directives:</span>
                 </div>
                 <span>
-                  Locate all 3 Reality Anchors scattered throughout this sector. Deposit them at the exit airlock sockets to breach the containment seal and descend.
+                  Locate all 3 Reality Anchors distributed across this floor. Deposit them at the exit airlock sockets to unseal the containment blast door and descend.
                 </span>
               </div>
 
               {/* Keyboard Controls Guide */}
-              <div className="border border-zinc-800/80 bg-zinc-900/40 p-4 rounded-xl text-xs space-y-2.5">
+              <div className="border border-zinc-800/80 bg-zinc-900/30 p-4 rounded-xl text-xs space-y-2.5">
                 <div className="text-zinc-300 font-bold uppercase tracking-wider text-[11px]">
-                  Expedition Controls Reference:
+                  Expedition Controls Quick Reference:
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-zinc-400 text-[11px]">
                   <div><kbd className="px-1.5 py-0.5 bg-black/80 border border-zinc-700 rounded text-zinc-300 font-bold mr-1.5">WASD</kbd> Move</div>
@@ -410,14 +412,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* TAB 3: AUDIO & CONTROLS SETTINGS */}
           {activeTab === 'settings' && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-1">
+              
               {/* DIFFICULTY SELECTOR */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center text-xs font-semibold text-zinc-300">
                   <span className="text-zinc-400 uppercase tracking-wider text-[11px]">Difficulty / Threat Level</span>
                   <span className="text-amber-400 font-bold uppercase text-[11px]">{settings.difficulty}</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-zinc-900/80 border border-zinc-800 rounded-xl">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-zinc-900/60 border border-zinc-800 rounded-xl">
                   {difficulties.map((diff) => (
                     <button
                       key={diff.id}
@@ -439,7 +442,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* JUMPSCARE TOGGLE */}
-              <div className="border border-zinc-800/80 bg-zinc-900/50 p-3.5 rounded-xl">
+              <div className="border border-zinc-800/80 bg-zinc-900/40 p-4 rounded-xl">
                 <label className="flex items-start gap-3.5 cursor-pointer">
                   <input
                     type="checkbox"
@@ -452,10 +455,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <ShieldAlert className="w-4 h-4 text-amber-500" />
                       <span>Jumpscares: {settings.enableJumpscares ? 'ENABLED' : 'DISABLED (ATMOSPHERIC)'}</span>
                     </div>
-                    <p className="mt-0.5 text-[11px] text-zinc-400 leading-relaxed">
+                    <p className="mt-1 text-[11px] text-zinc-400 leading-relaxed">
                       {settings.enableJumpscares
                         ? 'Visceral analog visual stinger on capture.'
-                        : 'Calm atmospheric analog signal loss ("SIGNAL TERMINATED"). Zero screamers.'}
+                        : 'Calm atmospheric analog signal loss ("SIGNAL TERMINATED"). Zero loud screamers.'}
                     </p>
                   </div>
                 </label>
@@ -533,7 +536,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* 1990s VHS TAPE AESTHETIC */}
-              <div className="space-y-1.5 border border-zinc-800/80 p-3 bg-zinc-900/50 rounded-xl">
+              <div className="space-y-1.5 border border-zinc-800/80 p-3.5 bg-zinc-900/40 rounded-xl">
                 <div className="flex justify-between items-center text-xs font-semibold">
                   <span className="flex items-center gap-1.5 text-zinc-300 text-[11px] uppercase tracking-wider">
                     <Video className="w-4 h-4 text-amber-400" />
@@ -562,7 +565,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               {/* RETRO CRT SHADER */}
-              <label className="flex items-center justify-between cursor-pointer border border-zinc-800/80 p-3 bg-zinc-900/50 rounded-xl">
+              <label className="flex items-center justify-between cursor-pointer border border-zinc-800/80 p-3.5 bg-zinc-900/40 rounded-xl">
                 <span className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
                   <Monitor className="w-4 h-4 text-zinc-400" />
                   <span>CRT Scanlines & Analog Grain</span>
@@ -590,7 +593,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="mt-4 border-t border-zinc-800/80 pt-3 flex justify-between items-center text-xs text-zinc-500 shrink-0">
+        <footer className="border-t border-zinc-800/80 pt-3 flex justify-between items-center text-xs text-zinc-500 shrink-0">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
             <span>THE THRESHOLD // LIMINAL DRIFT 2.0</span>
@@ -600,9 +603,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             onClick={onClose}
             className="text-amber-400 hover:text-amber-300 font-bold uppercase tracking-wider cursor-pointer"
           >
-            [Close Menu & Resume]
+            [Close & Resume]
           </button>
-        </div>
+        </footer>
+
       </div>
     </div>
   );
