@@ -60,9 +60,9 @@ export class LiminalWorld {
   private floatingRelics: THREE.Object3D[] = [];
   private dreamAnimatedObjects: { type: 'monolith' | 'cloud' | 'balloon' | 'swing' | 'motes'; obj: THREE.Object3D; userData: any }[] = [];
 
-  // Level 2 Sublimity Water Ripple Mesh Pool & Custom Liminal GLSL Water Controller
+  // Level 2 Sublimity Custom Liminal GLSL Water Controller
   private poolWaterController: ReturnType<typeof createPoolWaterMaterial>;
-  private waterRipples: { mesh: THREE.Mesh; life: number; maxLife: number; active: boolean }[] = [];
+  private static readonly _rippleCamDir = new THREE.Vector3();
 
   // Level 3 Endless Archives Loop Anomaly State
   private archiveAnomalyNodes: {
@@ -193,23 +193,6 @@ export class LiminalWorld {
     // Initialize Level 2 Sublimity Poolrooms GLSL Water Controller
     this.poolWaterController = createPoolWaterMaterial();
 
-    // Fixed Water Ripple Mesh Pool for Level 2 Sublimity Poolrooms
-    const rippleGeo = new THREE.RingGeometry(0.1, 0.45, 24);
-    rippleGeo.rotateX(-Math.PI / 2);
-    for (let i = 0; i < 6; i++) {
-      const mat = new THREE.MeshBasicMaterial({
-        color: 0x67e8f9,
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      });
-      const mesh = new THREE.Mesh(rippleGeo, mat);
-      mesh.visible = false;
-      this.scene.add(mesh);
-      this.waterRipples.push({ mesh, life: 0, maxLife: 1.2, active: false });
-    }
-
     window.addEventListener('resize', this.onResize);
   }
 
@@ -286,23 +269,15 @@ export class LiminalWorld {
     this.lastArchiveRoomKey = '';
     this.machineAnimatedObjects = [];
 
-    for (let i = 0; i < this.waterRipples.length; i++) {
-      this.waterRipples[i].active = false;
-      this.waterRipples[i].mesh.visible = false;
-    }
   }
 
-  public emitWaterRipple(x: number, z: number) {
+  public emitWaterRipple(x: number, z: number, intensity: number = 0.5) {
     if (this.currentLevel !== 2) return;
-    this.poolWaterController.emitRipple(x, z);
+    this.poolWaterController.emitRipple(x, z, intensity);
 
-    const ripple = this.waterRipples.find((r) => !r.active) || this.waterRipples[0];
-    ripple.active = true;
-    ripple.life = 0;
-    ripple.mesh.position.set(x, 0.052, z);
-    ripple.mesh.scale.set(0.3, 1, 0.3);
-    (ripple.mesh.material as THREE.MeshBasicMaterial).opacity = 0.45;
-    ripple.mesh.visible = true;
+    this.camera.getWorldDirection(LiminalWorld._rippleCamDir);
+    const yaw = Math.atan2(LiminalWorld._rippleCamDir.x, -LiminalWorld._rippleCamDir.z);
+    AudioEngine.playWaterRipple(x, z, intensity, this.camera.position, yaw);
   }
 
   public loadLevel(labyrinth: GeneratedLabyrinth) {
@@ -2080,22 +2055,6 @@ export class LiminalWorld {
       // Multi-layer procedural caustic drift on submerged tile floor
       this.textures.submergedPoolFloor.offset.x = (Math.sin(timeSec * 0.2) * 0.06 + timeSec * 0.014) % 1;
       this.textures.submergedPoolFloor.offset.y = (Math.cos(timeSec * 0.16) * 0.06 + timeSec * 0.011) % 1;
-
-      for (let i = 0; i < this.waterRipples.length; i++) {
-        const r = this.waterRipples[i];
-        if (r.active) {
-          r.life += delta;
-          const progress = r.life / r.maxLife;
-          if (progress >= 1.0) {
-            r.active = false;
-            r.mesh.visible = false;
-          } else {
-            const currentScale = 0.2 + progress * 2.2;
-            r.mesh.scale.set(currentScale, 1, currentScale);
-            (r.mesh.material as THREE.MeshBasicMaterial).opacity = (1 - progress) * 0.35;
-          }
-        }
-      }
     }
 
     // Level 3 Endless Archives: Deterministic subtle loop anomaly engine

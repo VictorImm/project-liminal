@@ -109,6 +109,10 @@ class AudioEngineClass {
   private isMenuAmbienceActive: boolean = false;
   private currentMenuVariant: 'main' | 'pause' = 'main';
 
+  // Sublimity Pools: Dynamic Water Ripple Audio System
+  private lastWaterRippleTime: number = 0;
+  private activeWaterRippleVoices: number = 0;
+
   public init() {
     // If context already exists, DO NOT recreate nodes! Just resume if suspended
     if (this.ctx) {
@@ -1054,6 +1058,139 @@ class AudioEngineClass {
     noiseGain.connect(this.masterGain);
 
     noise.start(now);
+  }
+
+  // --- SUBTLE SPATIAL WATER RIPPLE SOUND & INDOOR POOL ACOUSTICS ---
+  public playWaterRipple(
+    worldX: number,
+    worldZ: number,
+    intensity: number = 0.5,
+    listenerPos?: { x: number; z: number },
+    listenerYaw: number = 0
+  ) {
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    // 1. Audio Throttling & Coalescing: prevent overlapping sound spam (minimum 160ms interval, max 2 active voices)
+    if (now - this.lastWaterRippleTime < 0.16 || this.activeWaterRippleVoices >= 2) {
+      return;
+    }
+    this.lastWaterRippleTime = now;
+    this.activeWaterRippleVoices++;
+
+    // 2. Spatial 3D distance attenuation & relative azimuth stereo panning
+    let volumeScale = 1.0;
+    let stereoPan = 0.0;
+
+    if (listenerPos) {
+      const dx = worldX - listenerPos.x;
+      const dz = worldZ - listenerPos.z;
+      const dist = Math.hypot(dx, dz);
+
+      // Distance cutoff (> 18m is silent)
+      if (dist > 18.0) {
+        this.activeWaterRippleVoices = Math.max(0, this.activeWaterRippleVoices - 1);
+        return;
+      }
+
+      // Inverse-distance smooth attenuation
+      volumeScale = 1.0 / (1.0 + dist * 0.25);
+
+      // Relative azimuth pan based on player's yaw (rotate world offset into listener local space)
+      const cosYaw = Math.cos(-listenerYaw);
+      const sinYaw = Math.sin(-listenerYaw);
+      const localX = dx * cosYaw - dz * sinYaw;
+      stereoPan = Math.max(-0.85, Math.min(0.85, localX / Math.max(0.6, dist)));
+    }
+
+    const scaledIntensity = Math.max(0.1, Math.min(1.2, intensity));
+    const effectiveVol = 0.065 * scaledIntensity * volumeScale;
+    const dur = 0.22 + 0.14 * scaledIntensity;
+
+    // Master node for this ripple event
+    const rippleMasterGain = this.ctx.createGain();
+    rippleMasterGain.gain.setValueAtTime(effectiveVol, now);
+
+    const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+    if (panner) {
+      panner.pan.setValueAtTime(stereoPan, now);
+      rippleMasterGain.connect(panner);
+      panner.connect(this.masterGain);
+    } else {
+      rippleMasterGain.connect(this.masterGain);
+    }
+
+    // 3. Layer A: Hydrodynamic Liquid Body Displacement (gentle low thud)
+    const bodyOsc = this.ctx.createOscillator();
+    bodyOsc.type = 'sine';
+    const startFreq = 88 + scaledIntensity * 22;
+    bodyOsc.frequency.setValueAtTime(startFreq, now);
+    bodyOsc.frequency.exponentialRampToValueAtTime(36, now + dur);
+
+    const bodyFilter = this.ctx.createBiquadFilter();
+    bodyFilter.type = 'lowpass';
+    bodyFilter.frequency.setValueAtTime(180, now);
+
+    const bodyGain = this.ctx.createGain();
+    bodyGain.gain.setValueAtTime(0.001, now);
+    bodyGain.gain.linearRampToValueAtTime(0.85, now + 0.018);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    bodyOsc.connect(bodyFilter);
+    bodyFilter.connect(bodyGain);
+    bodyGain.connect(rippleMasterGain);
+    bodyOsc.start(now);
+    bodyOsc.stop(now + dur);
+
+    // 4. Layer B: Delicate Capillary Surface Droplet & Lap (bandpass filtered noise chirp)
+    const bufSize = Math.floor(this.ctx.sampleRate * 0.18);
+    const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufSize * 0.28));
+    }
+    const noiseSrc = this.ctx.createBufferSource();
+    noiseSrc.buffer = buf;
+
+    const noiseFilter = this.ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(740 + scaledIntensity * 180, now);
+    noiseFilter.Q.setValueAtTime(2.2, now);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.001, now);
+    noiseGain.gain.linearRampToValueAtTime(0.55, now + 0.012);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.8);
+
+    noiseSrc.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(rippleMasterGain);
+    noiseSrc.start(now);
+
+    // 5. Layer C: Subtle Enclosed Tiled Pool Room Acoustic Resonance (tile reverb chirp)
+    const tileResOsc = this.ctx.createOscillator();
+    tileResOsc.type = 'sine';
+    tileResOsc.frequency.setValueAtTime(620 + Math.random() * 80, now);
+    const tileResFilter = this.ctx.createBiquadFilter();
+    tileResFilter.type = 'bandpass';
+    tileResFilter.frequency.setValueAtTime(640, now);
+    tileResFilter.Q.setValueAtTime(3.2, now);
+
+    const tileResGain = this.ctx.createGain();
+    tileResGain.gain.setValueAtTime(0.001, now);
+    tileResGain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+    tileResGain.gain.exponentialRampToValueAtTime(0.0001, now + dur * 1.3);
+
+    tileResOsc.connect(tileResFilter);
+    tileResFilter.connect(tileResGain);
+    tileResGain.connect(rippleMasterGain);
+    tileResOsc.start(now);
+    tileResOsc.stop(now + dur * 1.35);
+
+    // Release voice count on completion
+    window.setTimeout(() => {
+      this.activeWaterRippleVoices = Math.max(0, this.activeWaterRippleVoices - 1);
+    }, (dur * 1.35 + 0.05) * 1000);
   }
 
   // --- ROTARY TELEPHONE RING ---

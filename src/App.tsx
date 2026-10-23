@@ -308,7 +308,8 @@ const GameContainer: React.FC = () => {
           let surface: 'carpet' | 'tile' | 'water' | 'metal' = 'carpet';
           if (room?.biome === 'poolroom') {
             surface = 'water';
-            world.emitWaterRipple(world.camera.position.x, world.camera.position.z);
+            const intensity = isSprinting ? 0.85 : 0.42;
+            world.emitWaterRipple(world.camera.position.x, world.camera.position.z, intensity);
           } else if (room?.biome === 'sublevel_red') {
             surface = 'metal';
           } else if (room?.biome === 'archive') {

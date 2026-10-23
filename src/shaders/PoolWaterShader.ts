@@ -12,9 +12,9 @@ import * as THREE from 'three';
 export function createPoolWaterMaterial(): {
   material: THREE.ShaderMaterial;
   updateTime: (timeSec: number) => void;
-  emitRipple: (x: number, z: number) => void;
+  emitRipple: (x: number, z: number, intensity?: number) => void;
 } {
-  const MAX_RIPPLES = 8;
+  const MAX_RIPPLES = 12;
   const ripplesArray = new Float32Array(MAX_RIPPLES * 4);
   let rippleIndex = 0;
 
@@ -23,7 +23,7 @@ export function createPoolWaterMaterial(): {
     ripplesArray[i * 4 + 0] = 0; // x
     ripplesArray[i * 4 + 1] = 0; // z
     ripplesArray[i * 4 + 2] = -999; // startTime
-    ripplesArray[i * 4 + 3] = 0; // amplitude
+    ripplesArray[i * 4 + 3] = 0; // amplitude / intensity
   }
 
   const uniforms = THREE.UniformsUtils.merge([
@@ -76,50 +76,62 @@ export function createPoolWaterMaterial(): {
       vec2 pos = vWorldPosition.xz;
 
       // 1. Multi-octave continuous calm wave superposition (Analytical trigonometric derivatives)
-      // Wave 1: Gentle primary swell (~16 deg)
-      vec2 k1 = vec2(0.82, 0.24);
-      float phase1 = dot(k1, pos) - uTime * 0.72;
+      // Wave 1: Gentle primary swell (~18 deg, slow ~12s cycle)
+      vec2 k1 = vec2(0.55, 0.18);
+      float phase1 = dot(k1, pos) - uTime * 0.52;
 
-      // Wave 2: Opposing cross-swell (~115 deg)
-      vec2 k2 = vec2(-0.42, 0.96);
-      float phase2 = dot(k2, pos) - uTime * 1.08;
+      // Wave 2: Opposing cross-swell (~125 deg, ~9s cycle)
+      vec2 k2 = vec2(-0.28, 0.62);
+      float phase2 = dot(k2, pos) - uTime * 0.76;
 
-      // Wave 3: Subtle capillary surface ripple (~ -45 deg)
-      vec2 k3 = vec2(1.30, -1.30);
-      float phase3 = dot(k3, pos) - uTime * 1.48;
+      // Wave 3: Subtle capillary surface shimmer (~ -42 deg)
+      vec2 k3 = vec2(0.95, -0.85);
+      float phase3 = dot(k3, pos) - uTime * 1.15;
+
+      // Wave 4: Delicate transverse capillary ripple (~ -130 deg)
+      vec2 k4 = vec2(-0.72, -0.58);
+      float phase4 = dot(k4, pos) - uTime * 1.38;
 
       // Analytical gradient dh/dx, dh/dz
       vec2 grad = vec2(0.0);
-      grad += k1 * (0.012 * cos(phase1));
-      grad += k2 * (0.007 * cos(phase2));
-      grad += k3 * (0.004 * cos(phase3));
+      grad += k1 * (0.0055 * cos(phase1));
+      grad += k2 * (0.0035 * cos(phase2));
+      grad += k3 * (0.0022 * cos(phase3));
+      grad += k4 * (0.0016 * cos(phase4));
 
-      // 2. Dynamic player footstep ripple propagation
+      // 2. Dynamic player footstep water ripple propagation with physical packet dispersion
       for (int i = 0; i < ${MAX_RIPPLES}; i++) {
         vec4 rip = uRipples[i];
-        if (rip.w > 0.0) {
+        float ripIntensity = rip.w;
+        if (ripIntensity > 0.0) {
           float dt = uTime - rip.z;
-          if (dt > 0.0 && dt < 2.4) {
+          if (dt > 0.0 && dt < 3.2) {
             vec2 diff = pos - rip.xy;
             float dist = length(diff);
 
-            // Water ripple propagation velocity (~1.9 m/s)
-            float waveFront = dt * 1.9;
+            // Water ripple propagation velocity (~1.85 m/s)
+            float waveFront = dt * 1.85;
             float distFromFront = dist - waveFront;
 
-            // Concentrated wavefront packet envelope
-            float envelope = exp(-pow(distFromFront / 0.32, 2.0));
-            // Spatial & temporal dissipation
-            float damping = exp(-dt * 1.35) / sqrt(dist + 0.25);
+            // Physical dispersion: wavefront packet envelope gently broadens over distance/time
+            float packetWidth = 0.30 + dt * 0.12;
+            float envelope = exp(-pow(distFromFront / packetWidth, 2.0));
 
-            float waveAmp = rip.w * 0.026 * envelope * damping;
+            // Smooth temporal & spatial dissipation (Hermite fade prevents sudden pop)
+            float lifeFade = smoothstep(3.2, 0.35, dt);
+            float distFade = smoothstep(4.2, 0.15, dist);
+            float damping = (exp(-dt * 0.95) / sqrt(dist + 0.30)) * lifeFade * distFade;
 
-            if (waveAmp > 0.0001 && dist > 0.02) {
+            float waveAmp = ripIntensity * 0.024 * envelope * damping;
+
+            if (waveAmp > 0.00005 && dist > 0.02) {
               vec2 dir = diff / dist;
-              float kRipple = 15.0;
-              float wRipple = 28.5;
+              float kRipple = 13.5;
+              float wRipple = 25.0;
               float ripPhase = kRipple * dist - wRipple * dt;
-              grad += dir * (waveAmp * kRipple * cos(ripPhase));
+              // Concentric wave packet with trailing harmonic
+              float packetForm = cos(ripPhase) + 0.32 * cos(ripPhase * 1.55 + 0.4);
+              grad += dir * (waveAmp * kRipple * packetForm);
             }
           }
         }
@@ -149,11 +161,15 @@ export function createPoolWaterMaterial(): {
       float NdotH = max(dot(anisoNormal, H), 0.0);
       float specular = pow(NdotH, 42.0) * 1.25;
 
-      // 5. Water color synthesis
+      // 5. Subtle micro-caustic light shimmer on surface
+      float surfaceShimmer = clamp(dot(grad, vec2(0.707, 0.707)) * 0.75, -0.15, 0.25);
+
+      // 6. Water color synthesis
       vec3 waterColor = mix(uDeepColor, uShallowColor, 0.45);
       vec3 finalColor = mix(waterColor, uSurfaceColor, fresnel * 0.72);
+      finalColor += uSurfaceColor * surfaceShimmer * (1.0 - fresnel * 0.4);
 
-      // Add fluorescent highlight
+      // Add fluorescent highlight (subtly distorted by wave normals)
       finalColor += uLightColor * (specular * (0.35 + 0.65 * fresnel));
 
       // Optical transparency gradient
@@ -179,13 +195,13 @@ export function createPoolWaterMaterial(): {
     material.uniforms.uTime.value = timeSec;
   };
 
-  const emitRipple = (x: number, z: number) => {
+  const emitRipple = (x: number, z: number, intensity: number = 0.5) => {
     const now = performance.now() * 0.001;
     const base = rippleIndex * 4;
     ripplesArray[base + 0] = x;
     ripplesArray[base + 1] = z;
     ripplesArray[base + 2] = now;
-    ripplesArray[base + 3] = 1.0; // amplitude
+    ripplesArray[base + 3] = Math.max(0.1, Math.min(1.5, intensity));
     rippleIndex = (rippleIndex + 1) % MAX_RIPPLES;
   };
 
