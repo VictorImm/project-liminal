@@ -187,7 +187,7 @@ class AudioEngineClass {
     filter.Q.setValueAtTime(3.5, this.ctx.currentTime);
 
     this.humGain = this.ctx.createGain();
-    this.humGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    this.humGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
 
     const gain180 = this.ctx.createGain();
     gain180.gain.setValueAtTime(0.35, this.ctx.currentTime);
@@ -240,7 +240,7 @@ class AudioEngineClass {
     filter.frequency.setValueAtTime(140, this.ctx.currentTime);
 
     const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+    gain.gain.setValueAtTime(0.0, this.ctx.currentTime);
     this.ambientGain = gain;
 
     // LFO to slowly swell the liminal drone
@@ -630,17 +630,17 @@ class AudioEngineClass {
 
     const initChord = MENU_CHORDS[0];
 
-    // Deep warm sine sub-bass
+    // Deep warm sine sub-bass (cushioned & filtered to prevent overpowering rumble/hum)
     this.menuBassOsc = this.ctx.createOscillator();
     this.menuBassOsc.type = 'sine';
     this.menuBassOsc.frequency.setValueAtTime(initChord.bass, this.ctx.currentTime);
 
     const bassFilter = this.ctx.createBiquadFilter();
     bassFilter.type = 'lowpass';
-    bassFilter.frequency.setValueAtTime(180, this.ctx.currentTime);
+    bassFilter.frequency.setValueAtTime(90, this.ctx.currentTime);
 
     const bassGain = this.ctx.createGain();
-    bassGain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+    bassGain.gain.setValueAtTime(0.012, this.ctx.currentTime);
 
     this.menuBassOsc.connect(bassFilter);
     bassFilter.connect(bassGain);
@@ -662,7 +662,7 @@ class AudioEngineClass {
       tapeLfoGain.connect(osc.detune);
 
       const voiceGain = this.ctx.createGain();
-      voiceGain.gain.setValueAtTime(0.065, this.ctx.currentTime);
+      voiceGain.gain.setValueAtTime(0.09, this.ctx.currentTime);
 
       const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
       if (panner) {
@@ -692,7 +692,7 @@ class AudioEngineClass {
       b0 = 0.99886 * b0 + white * 0.0555179;
       b1 = 0.99332 * b1 + white * 0.0750759;
       b2 = 0.96900 * b2 + white * 0.1538520;
-      data[i] = (b0 + b1 + b2) * 0.05;
+      data[i] = (b0 + b1 + b2) * 0.02;
     }
 
     const noise = this.ctx.createBufferSource();
@@ -705,7 +705,7 @@ class AudioEngineClass {
     noiseFilter.Q.setValueAtTime(1.1, this.ctx.currentTime);
 
     const noiseGain = this.ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.012, this.ctx.currentTime);
+    noiseGain.gain.setValueAtTime(0.003, this.ctx.currentTime);
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
@@ -772,22 +772,22 @@ class AudioEngineClass {
     toneFilter.type = 'lowpass';
     toneFilter.frequency.setValueAtTime(2600, startTime);
 
-    // Envelopes
+    // Envelopes: boosted melodic presence with gentle, natural release
     const gainFund = this.ctx.createGain();
     gainFund.gain.setValueAtTime(0.0001, startTime);
-    gainFund.gain.linearRampToValueAtTime(0.045, startTime + 0.008);
-    gainFund.gain.exponentialRampToValueAtTime(0.018, startTime + 0.45);
-    gainFund.gain.exponentialRampToValueAtTime(0.0001, startTime + 3.6);
+    gainFund.gain.linearRampToValueAtTime(0.12, startTime + 0.008);
+    gainFund.gain.exponentialRampToValueAtTime(0.045, startTime + 0.45);
+    gainFund.gain.exponentialRampToValueAtTime(0.0001, startTime + 3.8);
 
     const gainWarmth = this.ctx.createGain();
     gainWarmth.gain.setValueAtTime(0.0001, startTime);
-    gainWarmth.gain.linearRampToValueAtTime(0.016, startTime + 0.006);
-    gainWarmth.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.2);
+    gainWarmth.gain.linearRampToValueAtTime(0.042, startTime + 0.006);
+    gainWarmth.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.4);
 
     const gainChime = this.ctx.createGain();
     gainChime.gain.setValueAtTime(0.0001, startTime);
-    gainChime.gain.linearRampToValueAtTime(0.012, startTime + 0.005);
-    gainChime.gain.exponentialRampToValueAtTime(0.0001, startTime + 1.6);
+    gainChime.gain.linearRampToValueAtTime(0.032, startTime + 0.005);
+    gainChime.gain.exponentialRampToValueAtTime(0.0001, startTime + 1.8);
 
     // Connect voices
     oscFund.connect(gainFund);
@@ -809,11 +809,11 @@ class AudioEngineClass {
     }
 
     oscFund.start(startTime);
-    oscFund.stop(startTime + 3.7);
+    oscFund.stop(startTime + 3.9);
     oscWarmth.start(startTime);
-    oscWarmth.stop(startTime + 2.3);
+    oscWarmth.stop(startTime + 2.5);
     oscChime.start(startTime);
-    oscChime.stop(startTime + 1.7);
+    oscChime.stop(startTime + 1.9);
   }
 
   // Ethereal ambient chime sparkle
@@ -829,7 +829,7 @@ class AudioEngineClass {
 
     const gain = this.ctx.createGain();
     gain.gain.setValueAtTime(0.0001, startTime);
-    gain.gain.linearRampToValueAtTime(0.014, startTime + 0.04);
+    gain.gain.linearRampToValueAtTime(0.035, startTime + 0.04);
     gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 4.8);
 
     const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
@@ -857,7 +857,7 @@ class AudioEngineClass {
     this.isMenuAmbienceActive = true;
     const now = this.ctx.currentTime;
 
-    const targetGain = variant === 'main' ? 0.16 : 0.085;
+    const targetGain = variant === 'main' ? 0.30 : 0.16;
     this.menuAmbienceGain.gain.cancelScheduledValues(now);
     this.menuAmbienceGain.gain.setValueAtTime(this.menuAmbienceGain.gain.value, now);
     this.menuAmbienceGain.gain.setTargetAtTime(targetGain, now, 0.4);
