@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { InteractionTarget } from '../game/LiminalWorld';
 import { WorldItem } from '../procedural/LabyrinthGenerator';
-import { Battery, BatteryCharging, BatteryWarning, Flashlight, Settings, Hand, X } from 'lucide-react';
+import { Battery, BatteryCharging, BatteryWarning, Flashlight, Settings, Hand, X, Activity } from 'lucide-react';
 
 interface HUDProps {
   batteryLevel: number;
   flashlightOn: boolean;
+  stamina?: number;
+  isExhausted?: boolean;
+  isSprinting?: boolean;
   anchorsCollected: number;
   totalAnchors: number;
   interactionTarget: InteractionTarget | null;
@@ -24,6 +27,9 @@ interface HUDProps {
 export const HUD: React.FC<HUDProps> = ({
   batteryLevel,
   flashlightOn,
+  stamina = 100,
+  isExhausted = false,
+  isSprinting = false,
   anchorsCollected,
   totalAnchors,
   interactionTarget,
@@ -117,29 +123,77 @@ export const HUD: React.FC<HUDProps> = ({
           </div>
         )}
 
-        {/* Flashlight Battery & Settings Button */}
+        {/* Flashlight Battery & Stamina Telemetry & Settings Button */}
         <div className="flex items-center gap-2 md:gap-3">
-          <div className="bg-black/80 border border-zinc-700/80 px-2.5 py-1.5 rounded backdrop-blur-sm flex items-center gap-2 text-xs">
-            <Flashlight className={`w-3.5 h-3.5 ${flashlightOn ? 'text-amber-400' : 'text-zinc-600'}`} />
-            <span className="vhs-osd-text text-[11px] text-zinc-300 font-bold hidden sm:inline">
-              PWR:
-            </span>
-            <div className="w-14 sm:w-20 bg-zinc-900 border border-zinc-700 h-2 rounded overflow-hidden">
-              <div
-                className={`h-full transition-all duration-300 ${
-                  batteryLevel < 20 ? 'bg-red-500 animate-pulse' : 'bg-amber-400'
-                }`}
-                style={{ width: `${batteryLevel}%` }}
-              />
+          <div className="bg-black/80 border border-zinc-700/80 px-2.5 py-1.5 rounded backdrop-blur-sm flex flex-col gap-1 text-xs shadow-lg">
+            {/* Battery Row */}
+            <div className="flex items-center gap-2">
+              <Flashlight className={`w-3.5 h-3.5 shrink-0 ${flashlightOn ? 'text-amber-400' : 'text-zinc-600'}`} />
+              <span className="vhs-osd-text text-[10px] text-zinc-300 font-bold w-7">
+                PWR:
+              </span>
+              <div className="w-16 sm:w-20 bg-zinc-900 border border-zinc-700 h-1.5 rounded overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    batteryLevel < 20 ? 'bg-red-500 animate-pulse' : 'bg-amber-400'
+                  }`}
+                  style={{ width: `${batteryLevel}%` }}
+                />
+              </div>
+              <span className="vhs-osd-text font-bold text-zinc-200 text-[10px] w-7 text-right">
+                {Math.round(batteryLevel)}%
+              </span>
             </div>
-            <span className="vhs-osd-text font-bold text-zinc-200 text-[11px] w-7 text-right">
-              {Math.round(batteryLevel)}%
-            </span>
+
+            {/* Stamina Row (Unobtrusive when full, cleanly illuminated when sprinting / recovering) */}
+            <div
+              className={`flex items-center gap-2 transition-opacity duration-300 ${
+                stamina < 100 || isExhausted || isSprinting
+                  ? 'opacity-100'
+                  : 'opacity-40 hover:opacity-100'
+              }`}
+            >
+              <Activity
+                className={`w-3.5 h-3.5 shrink-0 transition-colors duration-200 ${
+                  isExhausted
+                    ? 'text-red-500 animate-pulse'
+                    : stamina < 25
+                    ? 'text-amber-400'
+                    : 'text-cyan-400'
+                }`}
+              />
+              <span
+                className={`vhs-osd-text text-[10px] font-bold w-7 transition-colors duration-200 ${
+                  isExhausted ? 'text-red-400' : 'text-zinc-300'
+                }`}
+              >
+                STM:
+              </span>
+              <div className="w-16 sm:w-20 bg-zinc-900 border border-zinc-700 h-1.5 rounded overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-150 ${
+                    isExhausted
+                      ? 'bg-red-500/80'
+                      : stamina < 25
+                      ? 'bg-amber-400'
+                      : 'bg-cyan-400'
+                  }`}
+                  style={{ width: `${stamina}%` }}
+                />
+              </div>
+              <span
+                className={`vhs-osd-text font-bold text-[10px] w-7 text-right transition-colors duration-200 ${
+                  isExhausted ? 'text-red-400' : 'text-zinc-200'
+                }`}
+              >
+                {Math.round(stamina)}%
+              </span>
+            </div>
           </div>
 
           <button
             onClick={onOpenSettings}
-            className="pointer-events-auto bg-black/80 hover:bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 rounded text-zinc-300 hover:text-white transition-colors flex items-center gap-1.5"
+            className="pointer-events-auto bg-black/80 hover:bg-zinc-800 border border-zinc-700 px-2.5 py-2.5 rounded text-zinc-300 hover:text-white transition-colors flex items-center gap-1.5 self-stretch justify-center"
             title="Settings / Pause [ESC]"
           >
             <Settings className="w-3.5 h-3.5" />

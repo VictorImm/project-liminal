@@ -1,5 +1,21 @@
 import * as THREE from 'three';
 
+export interface StaminaConfig {
+  maxStamina: number;        // Maximum stamina capacity (default: 100)
+  drainRate: number;         // Stamina drain per second when sprinting (default: 25)
+  recoveryRate: number;      // Stamina recovery per second (default: 18)
+  recoveryDelay: number;     // Delay in seconds before recovery starts after sprinting stops (default: 1.0)
+  minSprintThreshold: number;// Minimum stamina required to resume sprinting after exhaustion (default: 10)
+}
+
+export const DEFAULT_STAMINA_CONFIG: StaminaConfig = {
+  maxStamina: 100,
+  drainRate: 25,
+  recoveryRate: 18,
+  recoveryDelay: 1.0,
+  minSprintThreshold: 10,
+};
+
 export interface ControlCallbacks {
   onToggleFlashlight?: () => void;
   onInteract?: () => void;
@@ -20,6 +36,12 @@ export class FPSControls {
   public sensitivity: number = 1.0;
   public bobIntensity: number = 0.4; // Anti-motion sickness: 0.0 = static horizon, 1.0 = subtle translational bob
   public speedMultiplier: number = 1.0; // Dynamic terrain resistance (e.g. 0.65 for submerged poolrooms)
+
+  // Lightweight, rechargeable stamina system
+  public stamina: number = 100;
+  public isExhausted: boolean = false;
+  public staminaConfig: StaminaConfig = { ...DEFAULT_STAMINA_CONFIG };
+  private staminaRegenDelayTimer: number = 0;
 
   private keys: { [key: string]: boolean } = {};
   private euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -138,6 +160,7 @@ export class FPSControls {
       document.exitPointerLock?.();
     }
     this.isLocked = false;
+    this.isSprinting = false;
     this.keys = {}; // Clear any held movement keys so player does not continue sliding while paused
     this.joystickMove = { x: 0, y: 0 };
     this.velocity.set(0, 0, 0);
@@ -154,6 +177,31 @@ export class FPSControls {
     this.euler.x = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, this.euler.x));
   }
 
+  public getStamina(): number {
+    return this.stamina;
+  }
+
+  public getMaxStamina(): number {
+    return this.staminaConfig.maxStamina;
+  }
+
+  public getStaminaPercent(): number {
+    return (this.stamina / this.staminaConfig.maxStamina) * 100;
+  }
+
+  public setStamina(value: number) {
+    this.stamina = Math.max(0, Math.min(this.staminaConfig.maxStamina, value));
+    if (this.stamina >= this.staminaConfig.minSprintThreshold) {
+      this.isExhausted = false;
+    }
+  }
+
+  public resetStamina() {
+    this.stamina = this.staminaConfig.maxStamina;
+    this.isExhausted = false;
+    this.staminaRegenDelayTimer = 0;
+  }
+
   public update(delta: number, collisionCheck?: (newPos: THREE.Vector3) => boolean) {
     // When unlocked / paused, freeze movement physics completely
     if (!this.isLocked) {
@@ -166,16 +214,8 @@ export class FPSControls {
       this.position.copy(this.camera.position);
     }
 
-    const isSprint = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) && !this.isCrouching;
     const isCrouch = Boolean(this.keys['KeyC'] || this.keys['ControlLeft'] || this.keys['ControlRight']);
-    this.isSprinting = isSprint;
     this.isCrouching = isCrouch;
-
-    // Survival horror methodical, deliberate pacing
-    let moveSpeed = 2.4;
-    if (this.isSprinting) moveSpeed = 4.8;
-    if (this.isCrouching) moveSpeed = 1.3;
-    moveSpeed *= this.speedMultiplier;
 
     const moveDir = FPSControls._moveDir.set(0, 0, 0);
     if (this.keys['KeyW'] || this.keys['ArrowUp']) moveDir.z -= 1;
@@ -189,6 +229,59 @@ export class FPSControls {
     }
 
     const isMoving = moveDir.lengthSq() > 0;
+    const shiftPressed = Boolean(this.keys['ShiftLeft'] || this.keys['ShiftRight']);
+    const wantsToSprint = shiftPressed && !this.isCrouching && isMoving;
+
+    // Exhaustion lockout: player cannot resume sprinting until stamina recovers past threshold
+    if (this.isExhausted && this.stamina >= this.staminaConfig.minSprintThreshold) {
+      this.isExhausted = false;
+    }
+
+    if (wantsToSprint) {
+      if (!this.isExhausted && this.stamina > 0) {
+        this.isSprinting = true;
+        this.stamina = Math.max(0, this.stamina - this.staminaConfig.drainRate * delta);
+        // Sprinting resets the recovery delay timer
+        this.staminaRegenDelayTimer = this.staminaConfig.recoveryDelay;
+
+        if (this.stamina <= 0) {
+          this.stamina = 0;
+          this.isExhausted = true;
+          this.isSprinting = false; // Automatically drop out of sprint immediately
+        }
+      } else {
+        // Holding sprint while exhausted keeps player walking and resets recovery delay
+        this.isSprinting = false;
+        this.staminaRegenDelayTimer = this.staminaConfig.recoveryDelay;
+      }
+    } else {
+      this.isSprinting = false;
+
+      // Handle regeneration delay countdown and frame-rate-independent recovery
+      let regenDelta = delta;
+      if (this.staminaRegenDelayTimer > 0) {
+        const consumedDelay = Math.min(this.staminaRegenDelayTimer, regenDelta);
+        this.staminaRegenDelayTimer -= consumedDelay;
+        regenDelta -= consumedDelay;
+      }
+
+      if (this.staminaRegenDelayTimer <= 0 && regenDelta > 0 && this.stamina < this.staminaConfig.maxStamina) {
+        this.stamina = Math.min(
+          this.staminaConfig.maxStamina,
+          this.stamina + this.staminaConfig.recoveryRate * regenDelta
+        );
+
+        if (this.isExhausted && this.stamina >= this.staminaConfig.minSprintThreshold) {
+          this.isExhausted = false;
+        }
+      }
+    }
+
+    // Survival horror methodical, deliberate pacing
+    let moveSpeed = 2.4;
+    if (this.isSprinting) moveSpeed = 4.8;
+    if (this.isCrouching) moveSpeed = 1.3;
+    moveSpeed *= this.speedMultiplier;
 
     if (isMoving) {
       moveDir.normalize();
@@ -255,8 +348,10 @@ export class FPSControls {
       // Very gentle lateral weight shift between left & right steps
       targetLateral = Math.cos(this.headBobTimer) * (this.isSprinting ? 0.012 : 0.007) * this.bobIntensity;
     } else if (this.bobIntensity > 0) {
-      // Barely perceptible idle breathing displacement (2 millimeters)
-      targetBobY = Math.sin(time * 1.4) * 0.002 * this.bobIntensity;
+      // Barely perceptible idle breathing displacement (gentle breathing, slightly elevated when exhausted)
+      const breathFreq = this.isExhausted ? 2.4 : 1.4;
+      const breathAmp = this.isExhausted ? 0.0032 : 0.002;
+      targetBobY = Math.sin(time * breathFreq) * breathAmp * this.bobIntensity;
     }
 
     this.bobOffset.y = THREE.MathUtils.lerp(this.bobOffset.y, targetBobY, 0.18);

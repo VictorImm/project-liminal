@@ -30,6 +30,12 @@ const GameContainer: React.FC = () => {
   const anchorsCollectedRef = useRef(0);
   const [batteryLevel, setBatteryLevel] = useState(100);
   const [flashlightOn, setFlashlightOn] = useState(true);
+  const [stamina, setStamina] = useState(100);
+  const [isExhausted, setIsExhausted] = useState(false);
+  const [isSprinting, setIsSprinting] = useState(false);
+  const lastStaminaRef = useRef(100);
+  const lastExhaustedRef = useRef(false);
+  const lastSprintingRef = useRef(false);
   const [interactionTarget, setInteractionTarget] = useState<InteractionTarget | null>(null);
   const interactionTargetRef = useRef<InteractionTarget | null>(null);
   const [activeInspectItem, setActiveInspectItem] = useState<WorldItem | null>(null);
@@ -224,6 +230,13 @@ const GameContainer: React.FC = () => {
     setAnchorsCollected(0);
     setBatteryLevel(100);
     setFlashlightOn(true);
+    setStamina(100);
+    setIsExhausted(false);
+    setIsSprinting(false);
+    lastStaminaRef.current = 100;
+    lastExhaustedRef.current = false;
+    lastSprintingRef.current = false;
+    controlsRef.current?.resetStamina();
     setIsVictory(false);
     setTimeElapsed(0);
     startTimeRef.current = Date.now();
@@ -381,6 +394,23 @@ const GameContainer: React.FC = () => {
           setPlayerAngle(headingDeg);
           setBatteryLevel(world.batteryLevel);
           setFlashlightOn(world.flashlightOn);
+
+          // Synchronize stamina, exhaustion, and sprint state to HUD without redundant re-renders
+          const currentStamina = Math.round(controls.stamina);
+          const currentExhausted = controls.isExhausted;
+          const currentSprinting = controls.isSprinting;
+          if (
+            currentStamina !== lastStaminaRef.current ||
+            currentExhausted !== lastExhaustedRef.current ||
+            currentSprinting !== lastSprintingRef.current
+          ) {
+            lastStaminaRef.current = currentStamina;
+            lastExhaustedRef.current = currentExhausted;
+            lastSprintingRef.current = currentSprinting;
+            setStamina(currentStamina);
+            setIsExhausted(currentExhausted);
+            setIsSprinting(currentSprinting);
+          }
         }
 
         // Selective Interaction Target Dispatch: only trigger re-render if target actually changed
@@ -649,6 +679,9 @@ const GameContainer: React.FC = () => {
           <HUD
             batteryLevel={batteryLevel}
             flashlightOn={flashlightOn}
+            stamina={stamina}
+            isExhausted={isExhausted}
+            isSprinting={isSprinting}
             anchorsCollected={anchorsCollected}
             totalAnchors={3}
             interactionTarget={interactionTarget}
