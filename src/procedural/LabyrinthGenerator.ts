@@ -77,12 +77,14 @@ export class LabyrinthGenerator {
       const levelTitle = 'LEVEL 0 // DREAMCORE SANCTUARY';
       const activeRooms: Map<string, MapRoom> = new Map();
       const spawnCoord = { x: 1, z: 1 };
-      const exitCoord = { x: 4, z: 4 };
+      const exitCoord = { x: 6, z: 6 };
 
-      // ponytail: sparse organic trail across rolling meadow instead of 36 solid tiles
+      // Expanded scenic organic trail across vast rolling meadow (19 panoramic knoll waypoints)
       const meadowPathCoords: [number, number][] = [
-        [1, 1], [1, 2], [2, 2], [2, 1], [3, 1],
-        [2, 3], [3, 2], [3, 3], [4, 2], [4, 3], [4, 4]
+        [1, 1], [1, 2], [2, 1], [2, 2], [3, 1],
+        [2, 3], [3, 2], [3, 3], [4, 2], [3, 4],
+        [4, 3], [4, 4], [5, 3], [4, 5], [5, 4],
+        [5, 5], [6, 4], [5, 6], [6, 6]
       ];
 
       meadowPathCoords.forEach(([x, z]) => {
@@ -105,7 +107,7 @@ export class LabyrinthGenerator {
         activeRooms.set(`${x},${z}`, room);
       });
 
-      // Add peaceful nostalgic dreamcore lore notes
+      // Add peaceful nostalgic dreamcore lore notes distributed across panoramic knolls
       const noteRoom1 = activeRooms.get('1,1');
       if (noteRoom1) {
         noteRoom1.items.push({
@@ -148,7 +150,7 @@ export class LabyrinthGenerator {
         });
       }
 
-      const noteRoom4 = activeRooms.get('4,2');
+      const noteRoom4 = activeRooms.get('5,4');
       if (noteRoom4) {
         noteRoom4.items.push({
           id: 'note_dream_4',
@@ -156,8 +158,8 @@ export class LabyrinthGenerator {
           name: 'Operator Transmission Note',
           description:
             'If the red telephone rings on the ridge, do not answer in a hurry. The voice on the line only remembers songs from before the threshold closed.',
-          roomX: 4,
-          roomZ: 2,
+          roomX: 5,
+          roomZ: 4,
           localPos: [-1.2, 0.4, 0.5],
         });
       }
@@ -175,30 +177,30 @@ export class LabyrinthGenerator {
 
     const levelTitle = levelTitles[currentLevel - 1];
 
-    // --- PROCEDURAL MAP TOPOLOGY PER LEVEL (ZERO REPETITION) ---
-    // Level 1: Sprawling 5x5 office labyrinth with interconnected loops & dead ends
-    // Level 2: Elongated 7x3 flooded aqueduct & central open bath atriums
-    // Level 3: Grand 6x5 hotel corridor spine with branching archive suites
-    // Level 4: Claustrophobic 6x6 serpentine boiler trench & machine core
-    let gridW = 5;
-    let gridH = 5;
-    let targetRoomCount = 14;
+    // --- EXPANDED PROCEDURAL MAP TOPOLOGY PER LEVEL ---
+    // Level 1: Sprawling 7x7 office labyrinth with interconnected loops & dead ends (26 rooms)
+    // Level 2: Elongated 9x4 flooded aqueduct & central open bath atriums (24 rooms)
+    // Level 3: Grand 8x6 hotel corridor spine with branching archive suites (30 rooms)
+    // Level 4: Claustrophobic 8x8 serpentine boiler trench & machine core (28 rooms)
+    let gridW = 7;
+    let gridH = 7;
+    let targetRoomCount = 26;
     let startCoord = { x: 0, z: 0 };
 
     if (currentLevel === 2) {
-      gridW = 7;
-      gridH = 3;
-      targetRoomCount = 13;
+      gridW = 9;
+      gridH = 4;
+      targetRoomCount = 24;
       startCoord = { x: 0, z: 1 };
     } else if (currentLevel === 3) {
-      gridW = 6;
-      gridH = 5;
-      targetRoomCount = 18;
-      startCoord = { x: 0, z: 2 };
-    } else if (currentLevel === 4) {
-      gridW = 6;
+      gridW = 8;
       gridH = 6;
-      targetRoomCount = 16;
+      targetRoomCount = 30;
+      startCoord = { x: 0, z: 3 };
+    } else if (currentLevel === 4) {
+      gridW = 8;
+      gridH = 8;
+      targetRoomCount = 28;
       startCoord = { x: 0, z: 0 };
     }
 
@@ -229,9 +231,9 @@ export class LabyrinthGenerator {
         [neighbors[i], neighbors[j]] = [neighbors[j], neighbors[i]];
       }
 
-      // Level 3 Architecture Bias: Hotel Spine along z=2
-      if (currentLevel === 3 && cz === 2 && rng.next() > 0.3) {
-        neighbors.sort((a, b) => (a[1] === 2 ? -1 : 1));
+      // Level 3 Architecture Bias: Hotel Spine along central row z=3
+      if (currentLevel === 3 && cz === 3 && rng.next() > 0.3) {
+        neighbors.sort((a, b) => (a[1] === 3 ? -1 : 1));
       }
 
       // Level 2 Architecture Bias: Aqueduct eastward expansion
@@ -507,8 +509,9 @@ export class LabyrinthGenerator {
       });
     });
 
-    // Distribute Spare Batteries (3 items)
-    for (let b = 0; b < 3; b++) {
+    // Distribute Spare Batteries (scaled to 4-5 items across expanded labyrinth)
+    const batteryCount = nonSpecialRooms.length > 20 ? 5 : 4;
+    for (let b = 0; b < batteryCount; b++) {
       const roomCoord = nonSpecialRooms[(b + 3) % nonSpecialRooms.length];
       const room = activeRooms.get(`${roomCoord.x},${roomCoord.z}`)!;
       room.items.push({

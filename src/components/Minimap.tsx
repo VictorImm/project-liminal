@@ -117,7 +117,7 @@ export const Minimap: React.FC<MinimapProps> = ({
             <div className="relative w-full aspect-square bg-black border border-zinc-800 p-1 rounded overflow-hidden">
               {/* Grid Cells (Rooms) */}
               <div
-                className="w-full h-full grid gap-1"
+                className={`w-full h-full grid ${cols > 6 || rows > 6 ? 'gap-0.5' : 'gap-1'}`}
                 style={{
                   gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
                   gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,

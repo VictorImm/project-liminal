@@ -72,6 +72,7 @@ export class LiminalWorld {
 
   private raycaster = new THREE.Raycaster();
   private wallColliders: THREE.Box3[] = [];
+  private spatialColliders: Map<string, THREE.Box3[]> = new Map();
   private currentLevel: number = 1;
   private textures: {
     yellowWall: THREE.CanvasTexture;
@@ -241,6 +242,7 @@ export class LiminalWorld {
     this.floatingRelics = [];
     this.dreamAnimatedObjects = [];
     this.wallColliders = [];
+    this.spatialColliders.clear();
     this.interactables = [];
     this.itemDataMap.clear();
     this.exitGateMesh = null;
@@ -648,10 +650,11 @@ export class LiminalWorld {
       }
 
       // Build 4 Walls (with doorways for connected rooms)
-      this.buildWall(rx, rz, 'north', room.doors.some((d) => d.direction === 'north'), mats.wall, roomGroup);
-      this.buildWall(rx, rz, 'south', room.doors.some((d) => d.direction === 'south'), mats.wall, roomGroup);
-      this.buildWall(rx, rz, 'east', room.doors.some((d) => d.direction === 'east'), mats.wall, roomGroup);
-      this.buildWall(rx, rz, 'west', room.doors.some((d) => d.direction === 'west'), mats.wall, roomGroup);
+      const rKey = `${room.x},${room.z}`;
+      this.buildWall(rx, rz, 'north', room.doors.some((d) => d.direction === 'north'), mats.wall, roomGroup, rKey);
+      this.buildWall(rx, rz, 'south', room.doors.some((d) => d.direction === 'south'), mats.wall, roomGroup, rKey);
+      this.buildWall(rx, rz, 'east', room.doors.some((d) => d.direction === 'east'), mats.wall, roomGroup, rKey);
+      this.buildWall(rx, rz, 'west', room.doors.some((d) => d.direction === 'west'), mats.wall, roomGroup, rKey);
 
       // Wall picture frames / art (Poolrooms polaroids, Sublevel diagrams, Archive portraits; NEVER in Level 1 Backrooms)
       if (room.artSeed !== undefined && room.biome !== 'exit_airlock' && room.biome !== 'mono_yellow') {
@@ -695,22 +698,22 @@ export class LiminalWorld {
   private buildDreamcoreSanctuary(labyrinth: GeneratedLabyrinth) {
     // 1. Realistic Atmospheric Sky Dome with Natural Sky Gradient & Golden Horizon Glow
     this.scene.background = this.textures.realisticSky;
-    this.scene.fog = new THREE.FogExp2(0xe8edfb, 0.0055); // Soft, dreamlike horizon haze
+    this.scene.fog = new THREE.FogExp2(0xe8edfb, 0.0045); // Expansive soft dreamlike horizon haze
 
-    // 360° Sky Dome Mesh with realistic atmospheric Rayleigh gradient
-    const skyGeo = new THREE.SphereGeometry(88, 32, 24);
+    // 360° Sky Dome Mesh with realistic atmospheric Rayleigh gradient (expanded from 88m to 130m)
+    const skyGeo = new THREE.SphereGeometry(130, 32, 24);
     const skyMat = new THREE.MeshBasicMaterial({
       map: this.textures.realisticSky,
       side: THREE.BackSide,
       depthWrite: false,
     });
     const skyDome = new THREE.Mesh(skyGeo, skyMat);
-    skyDome.position.set(25, 0, 25);
+    skyDome.position.set(28, 0, 28);
     this.levelRootGroup.add(skyDome);
 
     // Warm golden directional sunlight matching the solar angle
     const sun = new THREE.DirectionalLight(0xfff8eb, 2.8);
-    sun.position.set(45, 38, 25);
+    sun.position.set(65, 45, 35);
     this.levelRootGroup.add(sun);
 
     // Radiant natural celestial ambient lighting
@@ -727,12 +730,12 @@ export class LiminalWorld {
     // 3. Floating Dandelion / Dream Dust Motes drifting over the rolling meadow
     this.spawnDreamMotes();
 
-    // 4. Elevated Continuous Rolling Meadow Terrain
-    const terrainSize = 90;
-    const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 72, 72);
+    // 4. Elevated Continuous Rolling Meadow Terrain (Expanded from 90m to 140m)
+    const terrainSize = 140;
+    const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, 96, 96);
     terrainGeo.rotateX(-Math.PI / 2);
-    // Center terrain over the 6x6 room expanse (x: 0 to 50, z: 0 to 50 -> center 25, 25)
-    terrainGeo.translate(25, 0, 25);
+    // Center terrain over the 7x7 room expanse (center at 28, 28)
+    terrainGeo.translate(28, 0, 28);
 
     const pos = terrainGeo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -743,7 +746,7 @@ export class LiminalWorld {
     terrainGeo.computeVertexNormals();
 
     const grassTex = this.textures.dreamGrass;
-    grassTex.repeat.set(16, 16);
+    grassTex.repeat.set(24, 24);
     const terrainMat = new THREE.MeshStandardMaterial({
       map: grassTex,
       roughness: 0.88,
@@ -781,15 +784,15 @@ export class LiminalWorld {
 
   // Floating Dandelion / Dream Dust Motes drifting over the rolling meadow
   private spawnDreamMotes() {
-    const particleCount = 280;
+    const particleCount = 380;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
 
     for (let i = 0; i < particleCount; i++) {
-      const x = Math.random() * 80 - 15;
-      const z = Math.random() * 80 - 15;
+      const x = Math.random() * 120 - 30;
+      const z = Math.random() * 120 - 30;
       const ground = this.getGroundHeight(x, z);
-      const y = ground + 0.6 + Math.random() * 8.5;
+      const y = ground + 0.6 + Math.random() * 9.5;
 
       positions[i * 3] = x;
       positions[i * 3 + 1] = y;
@@ -1334,13 +1337,26 @@ export class LiminalWorld {
     this.wallColliders.push(new THREE.Box3().setFromObject(boardPlaque));
   }
 
+  private registerCollider(box: THREE.Box3, roomKey?: string) {
+    this.wallColliders.push(box);
+    if (roomKey) {
+      let list = this.spatialColliders.get(roomKey);
+      if (!list) {
+        list = [];
+        this.spatialColliders.set(roomKey, list);
+      }
+      list.push(box);
+    }
+  }
+
   private buildWall(
     rx: number,
     rz: number,
     dir: 'north' | 'south' | 'east' | 'west',
     hasDoor: boolean,
     mat: THREE.Material,
-    parentGroup: THREE.Group = this.levelRootGroup
+    parentGroup: THREE.Group = this.levelRootGroup,
+    roomKey?: string
   ) {
     const half = this.roomSize / 2;
     const doorWidth = 2.2;
@@ -1367,7 +1383,7 @@ export class LiminalWorld {
       parentGroup.add(wall);
 
       const box = new THREE.Box3().setFromObject(wall);
-      this.wallColliders.push(box);
+      this.registerCollider(box, roomKey);
 
       // Level 1 Backrooms: Dark vinyl cove baseboard along floor line
       if (this.currentLevel === 1) {
@@ -1391,7 +1407,7 @@ export class LiminalWorld {
         const seg = new THREE.Mesh(new THREE.BoxGeometry(w, this.roomHeight, d), mat);
         seg.position.set(offsetX, this.roomHeight / 2, offsetZ);
         parentGroup.add(seg);
-        this.wallColliders.push(new THREE.Box3().setFromObject(seg));
+        this.registerCollider(new THREE.Box3().setFromObject(seg), roomKey);
 
         // Baseboard on doorway wall segments in Level 1
         if (this.currentLevel === 1) {
@@ -1714,8 +1730,8 @@ export class LiminalWorld {
 
   public isPositionValid(pos: THREE.Vector3): boolean {
     if (this.currentLevel === 0) {
-      // Keep player inside the peaceful rolling dream meadow boundary
-      if (pos.x < -4 || pos.x > 54 || pos.z < -4 || pos.z > 54) {
+      // Expanded rolling dream meadow boundary (140m terrain: allows free exploration)
+      if (pos.x < -18 || pos.x > 74 || pos.z < -18 || pos.z > 74) {
         return false;
       }
     }
@@ -1724,6 +1740,27 @@ export class LiminalWorld {
     LiminalWorld._playerBoxMax.set(pos.x + playerRadius, pos.y + 0.2, pos.z + playerRadius);
     LiminalWorld._playerBox.set(LiminalWorld._playerBoxMin, LiminalWorld._playerBoxMax);
 
+    // O(1) Fast Spatial Partitioning: only test walls in current room and 8 adjacent rooms
+    if (this.spatialColliders.size > 0) {
+      const rx = Math.round(pos.x / this.roomSize);
+      const rz = Math.round(pos.z / this.roomSize);
+
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oz = -1; oz <= 1; oz++) {
+          const list = this.spatialColliders.get(`${rx + ox},${rz + oz}`);
+          if (list) {
+            for (let i = 0; i < list.length; i++) {
+              if (list[i].intersectsBox(LiminalWorld._playerBox)) {
+                return false;
+              }
+            }
+          }
+        }
+      }
+      return true;
+    }
+
+    // Fallback for Level 0 open meadow terrain and isolated props
     for (let i = 0; i < this.wallColliders.length; i++) {
       if (this.wallColliders[i].intersectsBox(LiminalWorld._playerBox)) {
         return false;
@@ -1819,8 +1856,8 @@ export class LiminalWorld {
           obj.position.y = d.baseY + Math.sin(timeSec * 0.8 + d.bobPhase) * 0.35;
         } else if (entry.type === 'cloud') {
           obj.position.x += delta * d.speed;
-          if (obj.position.x > 85) {
-            obj.position.x = -35;
+          if (obj.position.x > 115) {
+            obj.position.x = -45;
           }
         } else if (entry.type === 'balloon') {
           obj.position.y = d.baseY + Math.sin(timeSec * 1.5 + d.phase) * 0.18;
