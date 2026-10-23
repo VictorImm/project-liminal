@@ -45,35 +45,35 @@ interface MenuChord {
   name: string;
   bass: number;
   voices: number[];
-  bell: number;
+  melody: number[];
 }
 
 // Liminal Ambience Progression: Dm9 -> Bbmaj7(#11) -> Gm9 -> Asus4(add9)
-// Calm, eerie, mysterious, slow-evolving unresolved pad textures
+// Atmospheric, melodic, melancholic piano-bell notes over lush open warm pads
 const MENU_CHORDS: MenuChord[] = [
   {
     name: 'Dm9',
     bass: 73.42, // D2
-    voices: [146.83, 220.0, 261.63, 329.63, 392.0], // D3, A3, C4, E4, G4
-    bell: 587.33, // D5
+    voices: [146.83, 220.0, 261.63, 329.63, 440.0], // D3, A3, C4, E4, A4
+    melody: [440.00, 349.23, 329.63, 293.66], // A4 -> F4 -> E4 -> D4 (melancholic descent)
   },
   {
     name: 'Bbmaj7(#11)',
     bass: 58.27, // Bb1
     voices: [116.54, 174.61, 233.08, 293.66, 370.0], // Bb2, F3, Bb3, D4, F#4
-    bell: 466.16, // Bb4
+    melody: [523.25, 440.00, 349.23, 293.66], // C5 -> A4 -> F4 -> D4 (yearning reach)
   },
   {
     name: 'Gm9',
     bass: 49.0, // G1
     voices: [98.0, 146.83, 196.0, 293.66, 349.23], // G2, D3, G3, D4, F4
-    bell: 523.25, // C5
+    melody: [466.16, 392.00, 349.23, 329.63], // Bb4 -> G4 -> F4 -> E4 (haunting grief)
   },
   {
     name: 'Asus4(add9)',
     bass: 55.0, // A1
     voices: [110.0, 164.81, 220.0, 293.66, 329.63], // A2, E3, A3, D4, E4
-    bell: 440.0, // A4
+    melody: [659.25, 587.33, 440.00, 554.37], // E5 -> D5 -> A4 -> C#5 (unresolved psychological suspense)
   },
 ];
 
@@ -110,7 +110,13 @@ class AudioEngineClass {
   private currentMenuVariant: 'main' | 'pause' = 'main';
 
   public init() {
-    if (this.ctx && this.ctx.state === 'running') return;
+    // If context already exists, DO NOT recreate nodes! Just resume if suspended
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      return;
+    }
 
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -131,6 +137,17 @@ class AudioEngineClass {
     }
   }
 
+  public resumeContext(): Promise<void> {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      return this.ctx.resume().catch(() => {});
+    }
+    return Promise.resolve();
+  }
+
+  public isAudioRunning(): boolean {
+    return Boolean(this.ctx && this.ctx.state === 'running');
+  }
+
   public setVolume(vol: number) {
     this.volume = Math.max(0, Math.min(1, vol));
     if (this.masterGain && this.ctx) {
@@ -140,12 +157,6 @@ class AudioEngineClass {
 
   public setJumpscareSetting(enabled: boolean) {
     this.enableJumpscares = enabled;
-  }
-
-  public resumeContext() {
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-    }
   }
 
   // --- PROCEDURAL 60Hz FLUORESCENT BALLAST HUM ---
@@ -592,28 +603,28 @@ class AudioEngineClass {
     this.menuAmbienceGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
     this.menuAmbienceGain.connect(this.masterGain);
 
-    // Warm resonant lowpass filter: 640Hz cutoff with gentle resonance
+    // Lush resonant lowpass filter: 1800Hz cutoff (prevents muffled drone hum)
     this.menuPadFilter = this.ctx.createBiquadFilter();
     this.menuPadFilter.type = 'lowpass';
-    this.menuPadFilter.frequency.setValueAtTime(640, this.ctx.currentTime);
-    this.menuPadFilter.Q.setValueAtTime(1.8, this.ctx.currentTime);
+    this.menuPadFilter.frequency.setValueAtTime(1800, this.ctx.currentTime);
+    this.menuPadFilter.Q.setValueAtTime(1.0, this.ctx.currentTime);
 
-    // Filter breathing LFO: sweeps between 500 Hz and 780 Hz (~22s cycle)
+    // Filter breathing LFO: sweeps between 1350 Hz and 2250 Hz (~20s cycle)
     const filterLfo = this.ctx.createOscillator();
     filterLfo.type = 'sine';
-    filterLfo.frequency.setValueAtTime(0.045, this.ctx.currentTime);
+    filterLfo.frequency.setValueAtTime(0.05, this.ctx.currentTime);
     const filterLfoGain = this.ctx.createGain();
-    filterLfoGain.gain.setValueAtTime(140, this.ctx.currentTime);
+    filterLfoGain.gain.setValueAtTime(450, this.ctx.currentTime);
     filterLfo.connect(filterLfoGain);
     filterLfoGain.connect(this.menuPadFilter.frequency);
     filterLfo.start();
 
-    // Subtle pitch tape drift LFO (+/- 3.2 cents)
+    // Subtle pitch tape drift LFO (+/- 2.8 cents)
     const tapeLfo = this.ctx.createOscillator();
     tapeLfo.type = 'sine';
-    tapeLfo.frequency.setValueAtTime(0.18, this.ctx.currentTime);
+    tapeLfo.frequency.setValueAtTime(0.16, this.ctx.currentTime);
     const tapeLfoGain = this.ctx.createGain();
-    tapeLfoGain.gain.setValueAtTime(3.2, this.ctx.currentTime);
+    tapeLfoGain.gain.setValueAtTime(2.8, this.ctx.currentTime);
     tapeLfo.connect(tapeLfoGain);
     tapeLfo.start();
 
@@ -626,10 +637,10 @@ class AudioEngineClass {
 
     const bassFilter = this.ctx.createBiquadFilter();
     bassFilter.type = 'lowpass';
-    bassFilter.frequency.setValueAtTime(150, this.ctx.currentTime);
+    bassFilter.frequency.setValueAtTime(180, this.ctx.currentTime);
 
     const bassGain = this.ctx.createGain();
-    bassGain.gain.setValueAtTime(0.045, this.ctx.currentTime);
+    bassGain.gain.setValueAtTime(0.05, this.ctx.currentTime);
 
     this.menuBassOsc.connect(bassFilter);
     bassFilter.connect(bassGain);
@@ -645,17 +656,17 @@ class AudioEngineClass {
       const osc = this.ctx.createOscillator();
       osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
 
-      const staticDetune = (idx - 2) * 4.0;
+      const staticDetune = (idx - 2) * 3.5;
       osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
       osc.detune.setValueAtTime(staticDetune, this.ctx.currentTime);
       tapeLfoGain.connect(osc.detune);
 
       const voiceGain = this.ctx.createGain();
-      voiceGain.gain.setValueAtTime(0.075, this.ctx.currentTime);
+      voiceGain.gain.setValueAtTime(0.065, this.ctx.currentTime);
 
       const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
       if (panner) {
-        const panValue = ((idx / (voiceCount - 1)) * 2 - 1) * 0.6;
+        const panValue = ((idx / (voiceCount - 1)) * 2 - 1) * 0.65;
         panner.pan.setValueAtTime(panValue, this.ctx.currentTime);
         osc.connect(voiceGain);
         voiceGain.connect(panner);
@@ -681,7 +692,7 @@ class AudioEngineClass {
       b0 = 0.99886 * b0 + white * 0.0555179;
       b1 = 0.99332 * b1 + white * 0.0750759;
       b2 = 0.96900 * b2 + white * 0.1538520;
-      data[i] = (b0 + b1 + b2) * 0.06;
+      data[i] = (b0 + b1 + b2) * 0.05;
     }
 
     const noise = this.ctx.createBufferSource();
@@ -690,11 +701,11 @@ class AudioEngineClass {
 
     const noiseFilter = this.ctx.createBiquadFilter();
     noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
-    noiseFilter.Q.setValueAtTime(1.2, this.ctx.currentTime);
+    noiseFilter.frequency.setValueAtTime(520, this.ctx.currentTime);
+    noiseFilter.Q.setValueAtTime(1.1, this.ctx.currentTime);
 
     const noiseGain = this.ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.015, this.ctx.currentTime);
+    noiseGain.gain.setValueAtTime(0.012, this.ctx.currentTime);
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
@@ -720,43 +731,121 @@ class AudioEngineClass {
       }
     }
 
-    // Sparse nostalgic bell accent
-    if (this.isMenuAmbienceActive && Math.random() > 0.25) {
-      this.playMenuBell(chord.bell, now);
+    // Schedule 4-note melodic phrase across the 8-second measure
+    if (this.isMenuAmbienceActive && chord.melody && chord.melody.length >= 4) {
+      const delays = [0.3, 2.3, 4.4, 6.3];
+      const pans = [-0.3, 0.25, -0.15, 0.3];
+      chord.melody.forEach((freq, i) => {
+        const delay = delays[i] || (i * 2.0);
+        const pan = pans[i] || 0;
+        this.playMenuPianoNote(freq, now + delay, pan);
+      });
+
+      // Occasional gentle ethereal chime sparkle on alternating chords
+      if (chordIdx % 2 === 1) {
+        this.playMenuChimeSparkle(now + 3.4);
+      }
     }
   }
 
-  private playMenuBell(freq: number, startTime: number) {
+  // Melancholic liminal upright piano / music-box synthesizer
+  private playMenuPianoNote(freq: number, startTime: number, panOffset: number = 0) {
     if (!this.ctx || !this.menuAmbienceGain) return;
+
+    // 1. Fundamental sine tone
+    const oscFund = this.ctx.createOscillator();
+    oscFund.type = 'sine';
+    oscFund.frequency.setValueAtTime(freq, startTime);
+
+    // 2. Second harmonic triangle for acoustic wooden body warmth
+    const oscWarmth = this.ctx.createOscillator();
+    oscWarmth.type = 'triangle';
+    oscWarmth.frequency.setValueAtTime(freq, startTime);
+
+    // 3. High chime sparkle overtone
+    const oscChime = this.ctx.createOscillator();
+    oscChime.type = 'sine';
+    oscChime.frequency.setValueAtTime(freq * 2, startTime);
+
+    // Filter to soften brightness into a warm vintage sound
+    const toneFilter = this.ctx.createBiquadFilter();
+    toneFilter.type = 'lowpass';
+    toneFilter.frequency.setValueAtTime(2600, startTime);
+
+    // Envelopes
+    const gainFund = this.ctx.createGain();
+    gainFund.gain.setValueAtTime(0.0001, startTime);
+    gainFund.gain.linearRampToValueAtTime(0.045, startTime + 0.008);
+    gainFund.gain.exponentialRampToValueAtTime(0.018, startTime + 0.45);
+    gainFund.gain.exponentialRampToValueAtTime(0.0001, startTime + 3.6);
+
+    const gainWarmth = this.ctx.createGain();
+    gainWarmth.gain.setValueAtTime(0.0001, startTime);
+    gainWarmth.gain.linearRampToValueAtTime(0.016, startTime + 0.006);
+    gainWarmth.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.2);
+
+    const gainChime = this.ctx.createGain();
+    gainChime.gain.setValueAtTime(0.0001, startTime);
+    gainChime.gain.linearRampToValueAtTime(0.012, startTime + 0.005);
+    gainChime.gain.exponentialRampToValueAtTime(0.0001, startTime + 1.6);
+
+    // Connect voices
+    oscFund.connect(gainFund);
+    oscWarmth.connect(gainWarmth);
+    oscChime.connect(gainChime);
+
+    gainFund.connect(toneFilter);
+    gainWarmth.connect(toneFilter);
+    gainChime.connect(toneFilter);
+
+    // Panning & output
+    const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+    if (panner) {
+      panner.pan.setValueAtTime(Math.max(-0.6, Math.min(0.6, panOffset)), startTime);
+      toneFilter.connect(panner);
+      panner.connect(this.menuAmbienceGain);
+    } else {
+      toneFilter.connect(this.menuAmbienceGain);
+    }
+
+    oscFund.start(startTime);
+    oscFund.stop(startTime + 3.7);
+    oscWarmth.start(startTime);
+    oscWarmth.stop(startTime + 2.3);
+    oscChime.start(startTime);
+    oscChime.stop(startTime + 1.7);
+  }
+
+  // Ethereal ambient chime sparkle
+  private playMenuChimeSparkle(startTime: number) {
+    if (!this.ctx || !this.menuAmbienceGain) return;
+
+    const chimeFreqs = [1046.5, 1318.5, 1567.98, 1760.0];
+    const freq = chimeFreqs[Math.floor(Math.random() * chimeFreqs.length)];
 
     const osc = this.ctx.createOscillator();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, startTime + 0.05);
+    osc.frequency.setValueAtTime(freq, startTime);
 
-    const oscHarm = this.ctx.createOscillator();
-    oscHarm.type = 'sine';
-    oscHarm.frequency.setValueAtTime(freq * 2.5, startTime + 0.05);
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.linearRampToValueAtTime(0.014, startTime + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 4.8);
 
-    const gain1 = this.ctx.createGain();
-    gain1.gain.setValueAtTime(0.0001, startTime + 0.05);
-    gain1.gain.linearRampToValueAtTime(0.024, startTime + 0.09);
-    gain1.gain.exponentialRampToValueAtTime(0.0001, startTime + 4.5);
+    const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+    if (panner) {
+      const pan = (Math.random() * 2 - 1) * 0.5;
+      panner.pan.setValueAtTime(pan, startTime);
+      osc.connect(gain);
+      gain.connect(panner);
+      panner.connect(this.menuAmbienceGain);
+    } else {
+      osc.connect(gain);
+      gain.connect(this.menuAmbienceGain);
+    }
 
-    const gain2 = this.ctx.createGain();
-    gain2.gain.setValueAtTime(0.0001, startTime + 0.05);
-    gain2.gain.linearRampToValueAtTime(0.008, startTime + 0.08);
-    gain2.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.0);
-
-    osc.connect(gain1);
-    gain1.connect(this.menuAmbienceGain);
-
-    oscHarm.connect(gain2);
-    gain2.connect(this.menuAmbienceGain);
-
-    osc.start(startTime + 0.05);
-    osc.stop(startTime + 4.6);
-    oscHarm.start(startTime + 0.05);
-    oscHarm.stop(startTime + 2.1);
+    osc.start(startTime);
+    osc.stop(startTime + 5.0);
   }
 
   public startMenuAmbience(variant: 'main' | 'pause' = 'main') {
@@ -768,14 +857,14 @@ class AudioEngineClass {
     this.isMenuAmbienceActive = true;
     const now = this.ctx.currentTime;
 
-    const targetGain = variant === 'main' ? 0.075 : 0.048;
+    const targetGain = variant === 'main' ? 0.16 : 0.085;
     this.menuAmbienceGain.gain.cancelScheduledValues(now);
     this.menuAmbienceGain.gain.setValueAtTime(this.menuAmbienceGain.gain.value, now);
-    this.menuAmbienceGain.gain.setTargetAtTime(targetGain, now, 0.45);
+    this.menuAmbienceGain.gain.setTargetAtTime(targetGain, now, 0.4);
 
     if (this.menuPadFilter) {
-      const targetCutoff = variant === 'main' ? 640 : 500;
-      this.menuPadFilter.frequency.setTargetAtTime(targetCutoff, now, 0.5);
+      const targetCutoff = variant === 'main' ? 1800 : 1000;
+      this.menuPadFilter.frequency.setTargetAtTime(targetCutoff, now, 0.4);
     }
 
     if (!this.menuChordTimer) {
@@ -784,7 +873,7 @@ class AudioEngineClass {
       this.menuChordTimer = window.setInterval(() => {
         this.menuChordIndex = (this.menuChordIndex + 1) % MENU_CHORDS.length;
         this.applyMenuChord(this.menuChordIndex);
-      }, 8500);
+      }, 8000);
     }
   }
 

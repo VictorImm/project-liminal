@@ -101,11 +101,29 @@ const GameContainer: React.FC = () => {
     }
   }, [settings.mouseSensitivity, settings.headBobIntensity]);
 
-  // Start Main Menu procedural ambient pad on start screen
+  // Start Main Menu procedural ambient pad on start screen and ensure audio context resumes on user gesture
   useEffect(() => {
     if (gameState === 'start') {
       AudioEngine.startMenuAmbience('main');
     }
+
+    const unlockOnGesture = () => {
+      AudioEngine.resumeContext().then(() => {
+        if (gameStateRef.current === 'start') {
+          AudioEngine.startMenuAmbience('main');
+        } else if (isPausedRef.current) {
+          AudioEngine.startMenuAmbience('pause');
+        }
+      });
+    };
+
+    window.addEventListener('pointerdown', unlockOnGesture, { once: true });
+    window.addEventListener('keydown', unlockOnGesture, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockOnGesture);
+      window.removeEventListener('keydown', unlockOnGesture);
+    };
   }, [gameState]);
 
   // Centralized Pause & Resume System

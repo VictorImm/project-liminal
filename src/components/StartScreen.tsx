@@ -27,6 +27,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
   const [seed, setSeed] = useState(() => 'LIMINAL-' + Math.floor(Math.random() * 900000 + 100000));
   const [selectedLevel, setSelectedLevel] = useState<number>(1);
   const [copied, setCopied] = useState(false);
+  const [audioActive, setAudioActive] = useState(() => AudioEngine.isAudioRunning());
 
   useEffect(() => {
     if (document.pointerLockElement) {
@@ -34,11 +35,32 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
     }
     // Attempt starting ambient soundscape on mount
     AudioEngine.startMenuAmbience('main');
+    setAudioActive(AudioEngine.isAudioRunning());
+
+    const unlockAudio = () => {
+      AudioEngine.resumeContext().then(() => {
+        AudioEngine.startMenuAmbience('main');
+        setAudioActive(true);
+      });
+    };
+
+    window.addEventListener('pointerdown', unlockAudio, { passive: true });
+    window.addEventListener('keydown', unlockAudio, { passive: true });
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
   }, []);
 
   const handleContainerClick = () => {
     // Unlocks browser Web Audio policy on first user interaction gesture
-    AudioEngine.startMenuAmbience('main');
+    AudioEngine.resumeContext().then(() => {
+      AudioEngine.startMenuAmbience('main');
+      setAudioActive(true);
+    });
   };
 
   const generateNewSeed = () => {
@@ -392,10 +414,19 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
               <Headphones className="w-3.5 h-3.5 text-zinc-400" />
               <span>Stereo headphones strongly recommended for binaural acoustics & hum</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Volume2 className="w-3.5 h-3.5 text-amber-500/80" />
-              <span>PROCEDURAL LIMINAL AUDIO ENGINE ACTIVE</span>
-            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleContainerClick();
+              }}
+              className="flex items-center gap-2 hover:text-amber-400 transition-colors cursor-pointer"
+            >
+              <Volume2 className={`w-3.5 h-3.5 ${audioActive ? 'text-amber-400 animate-pulse' : 'text-zinc-600'}`} />
+              <span className="font-mono text-[10px] tracking-wider uppercase">
+                {audioActive ? 'SOUNDTRACK: ACTIVE (PIANO & LIMINAL PAD)' : 'CLICK TO ENABLE SOUNDTRACK'}
+              </span>
+            </button>
           </div>
         </footer>
 
