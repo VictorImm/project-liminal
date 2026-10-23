@@ -5,6 +5,41 @@
  * 100% code synthesized - zero external audio assets.
  */
 
+interface DreamChord {
+  name: string;
+  bass: number;
+  voices: number[];
+  melody: number;
+}
+
+// 4-Chord Liminal Dreamcore Progression: Fmaj9 -> Em7 -> Dm9 -> Cmaj9
+const DREAM_CHORDS: DreamChord[] = [
+  {
+    name: 'Fmaj9',
+    bass: 87.31, // F2
+    voices: [174.61, 220.0, 261.63, 329.63, 392.0], // F3, A3, C4, E4, G4
+    melody: 440.0, // A4
+  },
+  {
+    name: 'Em7',
+    bass: 82.41, // E2
+    voices: [164.81, 196.0, 246.94, 293.66, 392.0], // E3, G3, B3, D4, G4
+    melody: 392.0, // G4
+  },
+  {
+    name: 'Dm9',
+    bass: 73.42, // D2
+    voices: [146.83, 174.61, 220.0, 261.63, 329.63], // D3, F3, A3, C4, E4
+    melody: 329.63, // E4
+  },
+  {
+    name: 'Cmaj9',
+    bass: 65.41, // C2
+    voices: [130.81, 196.0, 246.94, 293.66, 329.63], // C3, G3, B3, D4, E4
+    melody: 293.66, // D4
+  },
+];
+
 class AudioEngineClass {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -13,7 +48,12 @@ class AudioEngineClass {
   private staticGain: GainNode | null = null;
   private staticSource: AudioBufferSourceNode | null = null;
   private dreamcoreGain: GainNode | null = null;
+  private dreamcorePadGain: GainNode | null = null;
   private dreamcoreChimeTimer: number | null = null;
+  private dreamcoreChordTimer: number | null = null;
+  private dreamcoreChordIndex: number = 0;
+  private dreamcoreBassOsc: OscillatorNode | null = null;
+  private dreamcoreVoiceOscs: OscillatorNode[] = [];
   private heartbeatTimer: number | null = null;
   private isMuted: boolean = false;
   private volume: number = 0.8;
@@ -152,26 +192,40 @@ class AudioEngineClass {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
 
-    // Manage Dreamcore Chimes Loop
+    // Manage Dreamcore Chimes & Chord Progression Loop
     if (this.dreamcoreChimeTimer) {
       window.clearInterval(this.dreamcoreChimeTimer);
       this.dreamcoreChimeTimer = null;
     }
+    if (this.dreamcoreChordTimer) {
+      window.clearInterval(this.dreamcoreChordTimer);
+      this.dreamcoreChordTimer = null;
+    }
 
     if (level === 0) {
-      // Level 0: Dreamcore Sanctuary (Nostalgic warm synth chord pad, peaceful breeze, wind chimes, ZERO 60Hz hum)
+      // Level 0: Dreamcore Sanctuary (Peaceful 4-chord progression loop, gentle breeze, wind chimes, ZERO 60Hz hum)
       if (this.humGain) this.humGain.gain.setTargetAtTime(0.0, now, 0.4);
       if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.02, now, 0.4);
       if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.24, now, 0.8);
 
+      // Start Dreamcore Chord Progression Loop (Fmaj9 -> Em7 -> Dm9 -> Cmaj9)
+      this.dreamcoreChordIndex = 0;
+      this.applyDreamcoreChord(0);
+
+      this.dreamcoreChordTimer = window.setInterval(() => {
+        this.dreamcoreChordIndex = (this.dreamcoreChordIndex + 1) % DREAM_CHORDS.length;
+        this.applyDreamcoreChord(this.dreamcoreChordIndex);
+      }, 7500);
+
       // Play soft periodic wind chimes
       this.dreamcoreChimeTimer = window.setInterval(() => {
-        if (Math.random() > 0.3) {
+        if (Math.random() > 0.35) {
           this.playDreamcoreChime();
         }
-      }, 5500);
+      }, 6000);
     } else {
       if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.0, now, 0.4);
+      this.dreamcoreChordIndex = 0;
 
       if (level === 2) {
         // Level 2: Sublimity Poolrooms (Watery echo, near-zero ballast buzz, quiet ripples)
@@ -201,10 +255,7 @@ class AudioEngineClass {
     this.dreamcoreGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
     this.dreamcoreGain.connect(this.masterGain);
 
-    // Warm nostalgic chord pad: F2 (bass root), F3, A3, C4, E4, G4 (Fmaj9 - deeply peaceful, nostalgic, comforting)
-    const freqs = [87.31, 174.61, 220.0, 261.63, 329.63, 392.0];
-    
-    // Slow breathing filter for ethereal atmospheric motion
+    // Master pad lowpass filter with gentle resonance
     const masterPadFilter = this.ctx.createBiquadFilter();
     masterPadFilter.type = 'lowpass';
     masterPadFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
@@ -220,26 +271,46 @@ class AudioEngineClass {
     lfoGain.connect(masterPadFilter.frequency);
     lfo.start();
 
-    freqs.forEach((freq, idx) => {
-      if (!this.ctx || !this.dreamcoreGain) return;
+    // Pad sub-gain for dynamic breath swells between chord transitions
+    this.dreamcorePadGain = this.ctx.createGain();
+    this.dreamcorePadGain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+    masterPadFilter.connect(this.dreamcorePadGain);
+    this.dreamcorePadGain.connect(this.dreamcoreGain);
+
+    // Initial chord: Fmaj9
+    const initChord = DREAM_CHORDS[0];
+
+    // 1. Bass root oscillator
+    this.dreamcoreBassOsc = this.ctx.createOscillator();
+    this.dreamcoreBassOsc.type = 'sine';
+    this.dreamcoreBassOsc.frequency.setValueAtTime(initChord.bass, this.ctx.currentTime);
+    const bassGain = this.ctx.createGain();
+    bassGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    this.dreamcoreBassOsc.connect(bassGain);
+    bassGain.connect(masterPadFilter);
+    this.dreamcoreBassOsc.start();
+
+    // 2. Chord voice oscillators (5 rich harmonic voices)
+    this.dreamcoreVoiceOscs = [];
+    initChord.voices.forEach((freq, idx) => {
+      if (!this.ctx) return;
       const osc = this.ctx.createOscillator();
-      osc.type = idx === 0 ? 'sine' : (idx % 2 === 0 ? 'sine' : 'triangle');
-      // Subtle organic detuning for lush chorused width
-      const detune = (idx - 2.5) * 3.5;
+      osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+      const detune = (idx - 2) * 3.5;
       osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
       osc.detune.setValueAtTime(detune, this.ctx.currentTime);
 
-      const padGain = this.ctx.createGain();
-      const vol = idx === 0 ? 0.08 : (0.16 / (freqs.length - 1));
-      padGain.gain.setValueAtTime(vol, this.ctx.currentTime);
+      const voiceGain = this.ctx.createGain();
+      voiceGain.gain.setValueAtTime(0.16 / initChord.voices.length, this.ctx.currentTime);
 
-      osc.connect(masterPadFilter);
+      osc.connect(voiceGain);
+      voiceGain.connect(masterPadFilter);
       osc.start();
+
+      this.dreamcoreVoiceOscs.push(osc);
     });
 
-    masterPadFilter.connect(this.dreamcoreGain);
-
-    // Gentle surreal summer meadow breeze noise (filtered pink noise)
+    // 3. Gentle surreal summer meadow breeze noise (filtered pink noise)
     const bufferSize = this.ctx.sampleRate * 3;
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
@@ -268,6 +339,57 @@ class AudioEngineClass {
     breezeFilter.connect(breezeGain);
     breezeGain.connect(this.dreamcoreGain);
     breeze.start();
+  }
+
+  // Apply smooth analog portamento chord glide in Dreamcore Sanctuary
+  private applyDreamcoreChord(chordIdx: number) {
+    if (!this.ctx || !this.dreamcoreGain) return;
+    const chord = DREAM_CHORDS[chordIdx % DREAM_CHORDS.length];
+    const now = this.ctx.currentTime;
+
+    // 1. Smooth analog portamento glide for bass root
+    if (this.dreamcoreBassOsc) {
+      this.dreamcoreBassOsc.frequency.setTargetAtTime(chord.bass, now, 0.65);
+    }
+
+    // 2. Smooth analog portamento glide for each chord voice
+    for (let i = 0; i < this.dreamcoreVoiceOscs.length; i++) {
+      const osc = this.dreamcoreVoiceOscs[i];
+      if (osc && chord.voices[i]) {
+        osc.frequency.setTargetAtTime(chord.voices[i], now, 0.6);
+      }
+    }
+
+    // 3. Gentle volume breath (subtle swell like musical breathing on chord change)
+    if (this.dreamcorePadGain) {
+      this.dreamcorePadGain.gain.cancelScheduledValues(now);
+      this.dreamcorePadGain.gain.setValueAtTime(this.dreamcorePadGain.gain.value, now);
+      this.dreamcorePadGain.gain.setTargetAtTime(0.12, now, 0.35);
+      this.dreamcorePadGain.gain.setTargetAtTime(0.18, now + 0.8, 1.0);
+    }
+
+    // 4. Soft nostalgic bell / music box chime note on the downbeat
+    this.playDreamcoreChordAccent(chord.melody, now);
+  }
+
+  // Play peaceful downbeat bell chime note for the active chord
+  private playDreamcoreChordAccent(freq: number, startTime: number) {
+    if (!this.ctx || !this.dreamcoreGain) return;
+
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, startTime + 0.08);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startTime + 0.08);
+    gain.gain.linearRampToValueAtTime(0.065, startTime + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 3.8);
+
+    osc.connect(gain);
+    gain.connect(this.dreamcoreGain);
+
+    osc.start(startTime + 0.08);
+    osc.stop(startTime + 3.9);
   }
 
   // Play peaceful crystalline wind chime notes in Dreamcore Sanctuary
