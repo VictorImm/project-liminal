@@ -13,30 +13,31 @@ interface DreamChord {
 }
 
 // 4-Chord Liminal Dreamcore Progression: Fmaj9 -> Em7 -> Dm9 -> Cmaj9
+// Lush open voicings spanning octaves 3, 4, and 5 for an ethereal, nostalgic ambient pad
 const DREAM_CHORDS: DreamChord[] = [
   {
     name: 'Fmaj9',
     bass: 87.31, // F2
-    voices: [174.61, 220.0, 261.63, 329.63, 392.0], // F3, A3, C4, E4, G4
-    melody: 440.0, // A4
+    voices: [174.61, 261.63, 329.63, 392.00, 523.25], // F3, C4, E4, G4, C5
+    melody: 659.25, // E5 (high singing chime)
   },
   {
     name: 'Em7',
     bass: 82.41, // E2
-    voices: [164.81, 196.0, 246.94, 293.66, 392.0], // E3, G3, B3, D4, G4
-    melody: 392.0, // G4
+    voices: [164.81, 246.94, 293.66, 392.00, 493.88], // E3, B3, D4, G4, B4
+    melody: 587.33, // D5
   },
   {
     name: 'Dm9',
     bass: 73.42, // D2
-    voices: [146.83, 174.61, 220.0, 261.63, 329.63], // D3, F3, A3, C4, E4
-    melody: 329.63, // E4
+    voices: [146.83, 220.00, 261.63, 329.63, 440.00], // D3, A3, C4, E4, A4
+    melody: 523.25, // C5
   },
   {
     name: 'Cmaj9',
     bass: 65.41, // C2
-    voices: [130.81, 196.0, 246.94, 293.66, 329.63], // C3, G3, B3, D4, E4
-    melody: 293.66, // D4
+    voices: [130.81, 196.00, 246.94, 293.66, 392.00], // C3, G3, B3, D4, G4
+    melody: 493.88, // B4
   },
 ];
 
@@ -54,6 +55,7 @@ class AudioEngineClass {
   private dreamcoreChordIndex: number = 0;
   private dreamcoreBassOsc: OscillatorNode | null = null;
   private dreamcoreVoiceOscs: OscillatorNode[] = [];
+  private activeLevel: number = 1;
   private heartbeatTimer: number | null = null;
   private isMuted: boolean = false;
   private volume: number = 0.8;
@@ -191,6 +193,7 @@ class AudioEngineClass {
   public setLevelAmbiance(level: number) {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
+    this.activeLevel = level;
 
     // Manage Dreamcore Chimes & Chord Progression Loop
     if (this.dreamcoreChimeTimer) {
@@ -203,10 +206,10 @@ class AudioEngineClass {
     }
 
     if (level === 0) {
-      // Level 0: Dreamcore Sanctuary (Peaceful 4-chord progression loop, gentle breeze, wind chimes, ZERO 60Hz hum)
+      // Level 0: Dreamcore Sanctuary (Peaceful lush 4-chord synth pad progression, gentle breeze, wind chimes, ZERO horror drone)
       if (this.humGain) this.humGain.gain.setTargetAtTime(0.0, now, 0.4);
-      if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.02, now, 0.4);
-      if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.24, now, 0.8);
+      if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.0, now, 0.4);
+      if (this.dreamcoreGain) this.dreamcoreGain.gain.setTargetAtTime(0.28, now, 0.8);
 
       // Start Dreamcore Chord Progression Loop (Fmaj9 -> Em7 -> Dm9 -> Cmaj9)
       this.dreamcoreChordIndex = 0;
@@ -255,62 +258,94 @@ class AudioEngineClass {
     this.dreamcoreGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
     this.dreamcoreGain.connect(this.masterGain);
 
-    // Master pad lowpass filter with gentle resonance
+    // 1. Synth Pad Resonant Lowpass Filter (Warm 24dB-style analog feel: 1350 Hz cutoff with Q=2.2)
     const masterPadFilter = this.ctx.createBiquadFilter();
     masterPadFilter.type = 'lowpass';
-    masterPadFilter.frequency.setValueAtTime(450, this.ctx.currentTime);
-    masterPadFilter.Q.setValueAtTime(1.5, this.ctx.currentTime);
+    masterPadFilter.frequency.setValueAtTime(1350, this.ctx.currentTime);
+    masterPadFilter.Q.setValueAtTime(2.2, this.ctx.currentTime);
 
-    // Gentle LFO modulating the filter cutoff (slow 0.06 Hz swell like peaceful breathing)
-    const lfo = this.ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(0.06, this.ctx.currentTime);
-    const lfoGain = this.ctx.createGain();
-    lfoGain.gain.setValueAtTime(90, this.ctx.currentTime);
-    lfo.connect(lfoGain);
-    lfoGain.connect(masterPadFilter.frequency);
-    lfo.start();
+    // Breathing Filter LFO: slowly sweeps filter between 800 Hz and 1900 Hz (~14s cycle)
+    const filterLfo = this.ctx.createOscillator();
+    filterLfo.type = 'sine';
+    filterLfo.frequency.setValueAtTime(0.07, this.ctx.currentTime);
+    const filterLfoGain = this.ctx.createGain();
+    filterLfoGain.gain.setValueAtTime(550, this.ctx.currentTime);
+    filterLfo.connect(filterLfoGain);
+    filterLfoGain.connect(masterPadFilter.frequency);
+    filterLfo.start();
+
+    // Analog Tape Drift Pitch LFO: subtle +/- 4 cents vibrato across voices
+    const tapeLfo = this.ctx.createOscillator();
+    tapeLfo.type = 'sine';
+    tapeLfo.frequency.setValueAtTime(0.22, this.ctx.currentTime);
+    const tapeLfoGain = this.ctx.createGain();
+    tapeLfoGain.gain.setValueAtTime(4.0, this.ctx.currentTime);
+    tapeLfo.connect(tapeLfoGain);
+    tapeLfo.start();
 
     // Pad sub-gain for dynamic breath swells between chord transitions
     this.dreamcorePadGain = this.ctx.createGain();
-    this.dreamcorePadGain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+    this.dreamcorePadGain.gain.setValueAtTime(0.24, this.ctx.currentTime);
     masterPadFilter.connect(this.dreamcorePadGain);
     this.dreamcorePadGain.connect(this.dreamcoreGain);
 
     // Initial chord: Fmaj9
     const initChord = DREAM_CHORDS[0];
 
-    // 1. Bass root oscillator
+    // 2. Clean, dedicated sub-bass oscillator (soft warm sine, separated from pad filter)
     this.dreamcoreBassOsc = this.ctx.createOscillator();
     this.dreamcoreBassOsc.type = 'sine';
     this.dreamcoreBassOsc.frequency.setValueAtTime(initChord.bass, this.ctx.currentTime);
+
+    const bassFilter = this.ctx.createBiquadFilter();
+    bassFilter.type = 'lowpass';
+    bassFilter.frequency.setValueAtTime(200, this.ctx.currentTime);
+    bassFilter.Q.setValueAtTime(0.7, this.ctx.currentTime);
+
     const bassGain = this.ctx.createGain();
-    bassGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
-    this.dreamcoreBassOsc.connect(bassGain);
-    bassGain.connect(masterPadFilter);
+    bassGain.gain.setValueAtTime(0.035, this.ctx.currentTime); // gentle low anchor, non-boomy
+
+    this.dreamcoreBassOsc.connect(bassFilter);
+    bassFilter.connect(bassGain);
+    bassGain.connect(this.dreamcoreGain);
     this.dreamcoreBassOsc.start();
 
-    // 2. Chord voice oscillators (5 rich harmonic voices)
+    // 3. Polyphonic Synth Pad Voice Oscillators (Lush detuned sawtooth + warm triangle pairs)
     this.dreamcoreVoiceOscs = [];
+    const voiceCount = initChord.voices.length;
+
     initChord.voices.forEach((freq, idx) => {
       if (!this.ctx) return;
       const osc = this.ctx.createOscillator();
-      osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
-      const detune = (idx - 2) * 3.5;
+      // Alternate triangle (warm core) and sawtooth (harmonic shimmer)
+      osc.type = idx % 2 === 0 ? 'triangle' : 'sawtooth';
+
+      const staticDetune = (idx - 2) * 5.5; // slight detuning spread across chord voices
       osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-      osc.detune.setValueAtTime(detune, this.ctx.currentTime);
+      osc.detune.setValueAtTime(staticDetune, this.ctx.currentTime);
+      tapeLfoGain.connect(osc.detune);
 
       const voiceGain = this.ctx.createGain();
-      voiceGain.gain.setValueAtTime(0.16 / initChord.voices.length, this.ctx.currentTime);
+      voiceGain.gain.setValueAtTime(0.055, this.ctx.currentTime);
 
-      osc.connect(voiceGain);
-      voiceGain.connect(masterPadFilter);
+      // Stereo field spread
+      const panner = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+      if (panner) {
+        const panValue = ((idx / (voiceCount - 1)) * 2 - 1) * 0.65;
+        panner.pan.setValueAtTime(panValue, this.ctx.currentTime);
+        osc.connect(voiceGain);
+        voiceGain.connect(panner);
+        panner.connect(masterPadFilter);
+      } else {
+        osc.connect(voiceGain);
+        voiceGain.connect(masterPadFilter);
+      }
+
       osc.start();
-
       this.dreamcoreVoiceOscs.push(osc);
     });
 
-    // 3. Gentle surreal summer meadow breeze noise (filtered pink noise)
+    // 4. Gentle surreal summer meadow breeze noise (filtered pink noise)
     const bufferSize = this.ctx.sampleRate * 3;
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
@@ -329,11 +364,11 @@ class AudioEngineClass {
 
     const breezeFilter = this.ctx.createBiquadFilter();
     breezeFilter.type = 'bandpass';
-    breezeFilter.frequency.setValueAtTime(360, this.ctx.currentTime);
-    breezeFilter.Q.setValueAtTime(0.7, this.ctx.currentTime);
+    breezeFilter.frequency.setValueAtTime(420, this.ctx.currentTime);
+    breezeFilter.Q.setValueAtTime(0.8, this.ctx.currentTime);
 
     const breezeGain = this.ctx.createGain();
-    breezeGain.gain.setValueAtTime(0.07, this.ctx.currentTime);
+    breezeGain.gain.setValueAtTime(0.045, this.ctx.currentTime);
 
     breeze.connect(breezeFilter);
     breezeFilter.connect(breezeGain);
@@ -349,14 +384,14 @@ class AudioEngineClass {
 
     // 1. Smooth analog portamento glide for bass root
     if (this.dreamcoreBassOsc) {
-      this.dreamcoreBassOsc.frequency.setTargetAtTime(chord.bass, now, 0.65);
+      this.dreamcoreBassOsc.frequency.setTargetAtTime(chord.bass, now, 0.75);
     }
 
     // 2. Smooth analog portamento glide for each chord voice
     for (let i = 0; i < this.dreamcoreVoiceOscs.length; i++) {
       const osc = this.dreamcoreVoiceOscs[i];
       if (osc && chord.voices[i]) {
-        osc.frequency.setTargetAtTime(chord.voices[i], now, 0.6);
+        osc.frequency.setTargetAtTime(chord.voices[i], now, 0.65);
       }
     }
 
@@ -364,8 +399,8 @@ class AudioEngineClass {
     if (this.dreamcorePadGain) {
       this.dreamcorePadGain.gain.cancelScheduledValues(now);
       this.dreamcorePadGain.gain.setValueAtTime(this.dreamcorePadGain.gain.value, now);
-      this.dreamcorePadGain.gain.setTargetAtTime(0.12, now, 0.35);
-      this.dreamcorePadGain.gain.setTargetAtTime(0.18, now + 0.8, 1.0);
+      this.dreamcorePadGain.gain.setTargetAtTime(0.18, now, 0.35);
+      this.dreamcorePadGain.gain.setTargetAtTime(0.26, now + 0.9, 1.2);
     }
 
     // 4. Soft nostalgic bell / music box chime note on the downbeat
@@ -376,20 +411,36 @@ class AudioEngineClass {
   private playDreamcoreChordAccent(freq: number, startTime: number) {
     if (!this.ctx || !this.dreamcoreGain) return;
 
-    const osc = this.ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, startTime + 0.08);
+    // Primary bell tone
+    const osc1 = this.ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(freq, startTime + 0.06);
 
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, startTime + 0.08);
-    gain.gain.linearRampToValueAtTime(0.065, startTime + 0.12);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 3.8);
+    // Sparkling 2nd harmonic
+    const osc2 = this.ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq * 2, startTime + 0.06);
 
-    osc.connect(gain);
-    gain.connect(this.dreamcoreGain);
+    const gain1 = this.ctx.createGain();
+    gain1.gain.setValueAtTime(0.0001, startTime + 0.06);
+    gain1.gain.linearRampToValueAtTime(0.075, startTime + 0.10);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, startTime + 4.2);
 
-    osc.start(startTime + 0.08);
-    osc.stop(startTime + 3.9);
+    const gain2 = this.ctx.createGain();
+    gain2.gain.setValueAtTime(0.0001, startTime + 0.06);
+    gain2.gain.linearRampToValueAtTime(0.03, startTime + 0.10);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.5);
+
+    osc1.connect(gain1);
+    gain1.connect(this.dreamcoreGain);
+
+    osc2.connect(gain2);
+    gain2.connect(this.dreamcoreGain);
+
+    osc1.start(startTime + 0.06);
+    osc1.stop(startTime + 4.3);
+    osc2.start(startTime + 0.06);
+    osc2.stop(startTime + 2.6);
   }
 
   // Play peaceful crystalline wind chime notes in Dreamcore Sanctuary
@@ -423,7 +474,7 @@ class AudioEngineClass {
   }
 
   private playDistantLiminalEcho() {
-    if (!this.ctx || !this.masterGain) return;
+    if (!this.ctx || !this.masterGain || this.activeLevel === 0) return;
     const now = this.ctx.currentTime;
 
     const osc = this.ctx.createOscillator();
