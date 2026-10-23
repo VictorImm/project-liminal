@@ -3,6 +3,7 @@ import { GeneratedLabyrinth, MapRoom, WorldItem } from '../procedural/LabyrinthG
 import { TextureGenerator } from '../procedural/TextureGenerator';
 import { SvgHorrorArt } from '../procedural/SvgHorrorArt';
 import { AudioEngine } from '../audio/AudioEngine';
+import { createPoolWaterMaterial } from '../shaders/PoolWaterShader';
 
 export interface InteractionTarget {
   type: 'anchor' | 'battery' | 'note' | 'phone' | 'exit';
@@ -58,7 +59,8 @@ export class LiminalWorld {
   private floatingRelics: THREE.Object3D[] = [];
   private dreamAnimatedObjects: { type: 'monolith' | 'cloud' | 'balloon' | 'swing' | 'motes'; obj: THREE.Object3D; userData: any }[] = [];
 
-  // Level 2 Sublimity Water Ripple Mesh Pool
+  // Level 2 Sublimity Water Ripple Mesh Pool & Custom Liminal GLSL Water Controller
+  private poolWaterController: ReturnType<typeof createPoolWaterMaterial>;
   private waterRipples: { mesh: THREE.Mesh; life: number; maxLife: number; active: boolean }[] = [];
   // Level 4 Machine Sub-Core dynamic steam fog state
   private steamHissTimer: number = 0;
@@ -158,6 +160,9 @@ export class LiminalWorld {
       this.pooledCeilingLights.push(pl);
     }
 
+    // Initialize Level 2 Sublimity Poolrooms GLSL Water Controller
+    this.poolWaterController = createPoolWaterMaterial();
+
     // Fixed Water Ripple Mesh Pool for Level 2 Sublimity Poolrooms
     const rippleGeo = new THREE.RingGeometry(0.1, 0.45, 24);
     rippleGeo.rotateX(-Math.PI / 2);
@@ -255,12 +260,14 @@ export class LiminalWorld {
 
   public emitWaterRipple(x: number, z: number) {
     if (this.currentLevel !== 2) return;
+    this.poolWaterController.emitRipple(x, z);
+
     const ripple = this.waterRipples.find((r) => !r.active) || this.waterRipples[0];
     ripple.active = true;
     ripple.life = 0;
-    ripple.mesh.position.set(x, 0.045, z);
+    ripple.mesh.position.set(x, 0.052, z);
     ripple.mesh.scale.set(0.3, 1, 0.3);
-    (ripple.mesh.material as THREE.MeshBasicMaterial).opacity = 0.65;
+    (ripple.mesh.material as THREE.MeshBasicMaterial).opacity = 0.45;
     ripple.mesh.visible = true;
   }
 
@@ -379,19 +386,11 @@ export class LiminalWorld {
       floor.userData = { surface: floorSurface };
       roomGroup.add(floor);
 
-      // Water reflection overlay for poolroom
+      // Seamless liminal water surface overlay for poolroom
       if (room.biome === 'poolroom') {
-        const waterGeo = new THREE.PlaneGeometry(this.roomSize * 0.9, this.roomSize * 0.9);
-        const waterMat = new THREE.MeshStandardMaterial({
-          color: 0x20c9d4,
-          transparent: true,
-          opacity: 0.35,
-          roughness: 0.1,
-          metalness: 0.8,
-        });
-        const water = new THREE.Mesh(waterGeo, waterMat);
+        const water = new THREE.Mesh(sharedFloorGeo, this.poolWaterController.material);
         water.rotation.x = -Math.PI / 2;
-        water.position.set(rx, 0.04, rz);
+        water.position.set(rx, 0.05, rz);
         roomGroup.add(water);
       }
 
@@ -582,24 +581,30 @@ export class LiminalWorld {
 
       // Atmospheric Environmental Luminescence (Pure Emissive Meshes - Zero PointLight Overkill)
       if (room.biome === 'poolroom') {
-        // Submerged cyan underwater drain
+        // Submerged underwater drain (sits flush on floor tiles beneath the 0.05m water surface)
         const drainMesh = new THREE.Mesh(
-          new THREE.CircleGeometry(0.35, 16),
-          new THREE.MeshStandardMaterial({ color: 0x00f5d4, emissive: 0x00f5d4, emissiveIntensity: 2.8 })
+          new THREE.CircleGeometry(0.38, 20),
+          new THREE.MeshStandardMaterial({
+            color: 0x05272c,
+            roughness: 0.35,
+            metalness: 0.85,
+            emissive: 0x00d9b8,
+            emissiveIntensity: 0.8,
+          })
         );
         drainMesh.rotation.x = -Math.PI / 2;
-        drainMesh.position.set(rx, 0.06, rz);
+        drainMesh.position.set(rx, 0.008, rz);
         roomGroup.add(drainMesh);
 
-        // 4 underwater corner perimeter luminescent pods
+        // 4 underwater corner perimeter luminescent pods (submerged beneath water)
         const offsets = [[-3, -3], [3, -3], [-3, 3], [3, 3]];
         offsets.forEach(([ox, oz]) => {
           const pod = new THREE.Mesh(
             new THREE.CircleGeometry(0.18, 12),
-            new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00e5ff, emissiveIntensity: 2.8 })
+            new THREE.MeshStandardMaterial({ color: 0x00f5d4, emissive: 0x00d2c4, emissiveIntensity: 2.2 })
           );
           pod.rotation.x = -Math.PI / 2;
-          pod.position.set(rx + ox, 0.05, rz + oz);
+          pod.position.set(rx + ox, 0.010, rz + oz);
           roomGroup.add(pod);
         });
       } else if (room.biome === 'exit_airlock') {
@@ -1803,10 +1808,14 @@ export class LiminalWorld {
       }
     }
 
-    // Level 2 Sublimity Poolrooms: Update active water ripples & surface caustics
+    // Level 2 Sublimity Poolrooms: Update GLSL water wave harmonics, ripples & floor caustics
     if (this.currentLevel === 2) {
-      this.textures.submergedPoolFloor.offset.x = (this.textures.submergedPoolFloor.offset.x + delta * 0.015) % 1;
-      this.textures.submergedPoolFloor.offset.y = (this.textures.submergedPoolFloor.offset.y + delta * 0.012) % 1;
+      const timeSec = performance.now() * 0.001;
+      this.poolWaterController.updateTime(timeSec);
+
+      // Multi-layer procedural caustic drift on submerged tile floor
+      this.textures.submergedPoolFloor.offset.x = (Math.sin(timeSec * 0.2) * 0.06 + timeSec * 0.014) % 1;
+      this.textures.submergedPoolFloor.offset.y = (Math.cos(timeSec * 0.16) * 0.06 + timeSec * 0.011) % 1;
 
       for (let i = 0; i < this.waterRipples.length; i++) {
         const r = this.waterRipples[i];
@@ -1817,9 +1826,9 @@ export class LiminalWorld {
             r.active = false;
             r.mesh.visible = false;
           } else {
-            const currentScale = 0.2 + progress * 2.4;
+            const currentScale = 0.2 + progress * 2.2;
             r.mesh.scale.set(currentScale, 1, currentScale);
-            (r.mesh.material as THREE.MeshBasicMaterial).opacity = (1 - progress) * 0.65;
+            (r.mesh.material as THREE.MeshBasicMaterial).opacity = (1 - progress) * 0.35;
           }
         }
       }

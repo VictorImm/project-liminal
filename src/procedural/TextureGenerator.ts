@@ -516,27 +516,35 @@ export class TextureGenerator {
     return tex;
   }
 
-  // Level 2 Floor: Submerged Small Mosaic Pool Tiles with Caustics
+  // Level 2 Floor: Submerged Small Mosaic Pool Tiles with Multi-Layered Caustics
   static createSubmergedPoolFloorTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    ctx.fillStyle = '#10565e';
+    // Dark submerged basin underlay
+    ctx.fillStyle = '#082f34';
     ctx.fillRect(0, 0, 512, 512);
 
-    const mSize = 32;
+    // High-density ceramic mosaic tiles (24px)
+    const mSize = 24;
     for (let x = 0; x < 512; x += mSize) {
       for (let y = 0; y < 512; y += mSize) {
-        const shade = Math.floor(Math.random() * 30) - 15;
-        ctx.fillStyle = `rgb(${16 + shade}, ${115 + shade}, ${135 + shade})`;
+        const shade = Math.floor(Math.random() * 26) - 13;
+        // Aged liminal pool ceramic tones
+        ctx.fillStyle = `rgb(${14 + shade}, ${92 + shade}, ${108 + shade})`;
         ctx.fillRect(x + 1, y + 1, mSize - 2, mSize - 2);
+
+        // Subtle specular bevel edge on ceramic
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.fillRect(x + 1, y + 1, mSize - 2, 2);
+        ctx.fillRect(x + 1, y + 1, 2, mSize - 2);
       }
     }
 
-    // Grout grid
-    ctx.strokeStyle = '#09363b';
+    // Waterproof epoxy grout grid
+    ctx.strokeStyle = '#051c20';
     ctx.lineWidth = 2;
     for (let x = 0; x <= 512; x += mSize) {
       ctx.beginPath();
@@ -550,6 +558,36 @@ export class TextureGenerator {
       ctx.lineTo(512, y);
       ctx.stroke();
     }
+
+    // Procedural refracted caustics web overlay
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(110, 225, 220, 0.16)';
+    ctx.filter = 'blur(2px)';
+
+    // Layer 1: Primary caustic loops
+    for (let i = 0; i < 28; i++) {
+      const cx = (i * 37) % 512;
+      const cy = (i * 59) % 512;
+      const r = 24 + ((i * 13) % 36);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r, r * 0.65, (i * 0.4), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Layer 2: Secondary fine filament nodes
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(160, 245, 240, 0.22)';
+    for (let i = 0; i < 18; i++) {
+      const cx = (i * 71) % 512;
+      const cy = (i * 43) % 512;
+      const r = 16 + ((i * 7) % 24);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r * 0.8, r * 1.2, (i * 0.7), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
