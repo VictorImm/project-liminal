@@ -190,13 +190,17 @@ export const HUD: React.FC<HUDProps> = ({
       {/* SEAMLESS DIEGETIC TRANSCRIPT / LOGS (Non-blocking: 100% Seamless Exploration) */}
       {activeInspectItem && (
         <div className="pointer-events-none absolute bottom-16 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 animate-fade-in">
-          <div className="bg-black/90 border border-amber-500/80 p-4 shadow-2xl backdrop-blur-md text-left">
+          <div className="bg-black/95 border border-amber-500/80 p-4 rounded-xl shadow-2xl backdrop-blur-md text-left">
             <div className="flex items-center justify-between border-b border-amber-900/60 pb-1.5 mb-2 text-xs font-bold text-amber-400 uppercase tracking-widest">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                <span>COMMUNICATION // {activeInspectItem.name}</span>
+                <span>
+                  {activeInspectItem.type === 'phone' ? 'INCOMING TRANSMISSION' : 'DOCUMENT RECOVERED'} // {activeInspectItem.name}
+                </span>
               </div>
-              <span className="text-[10px] text-zinc-400">[RECORDING]</span>
+              <span className="text-[10px] text-zinc-400 font-mono">
+                {activeInspectItem.type === 'phone' ? '[AUDIO TRANSCRIPT]' : '[FIELD NOTE]'}
+              </span>
             </div>
             <p className="text-xs text-zinc-200 leading-relaxed font-mono whitespace-pre-wrap">
               "{activeInspectItem.description}"

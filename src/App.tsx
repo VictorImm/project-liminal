@@ -13,6 +13,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { JumpscareModal } from './components/JumpscareModal';
 import { GameOverScreen } from './components/GameOverScreen';
 import { VHSOsdOverlay } from './components/VHSOsdOverlay';
+import { getLevelPhoneCall } from './data/LevelLore';
 
 type GameState = 'start' | 'playing' | 'jumpscare' | 'gameover';
 
@@ -42,6 +43,7 @@ const GameContainer: React.FC = () => {
   const labyrinthRef = useRef<GeneratedLabyrinth | null>(null);
   const handleInteractRef = useRef<() => void>(() => {});
   const gameStateRef = useRef<GameState>(gameState);
+  const phoneCallCounterRef = useRef<Record<number, number>>({ 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 });
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -478,19 +480,25 @@ const GameContainer: React.FC = () => {
       // Seamless phone recording: DO NOT unlock cursor!
       if (inspectTimerRef.current) clearTimeout(inspectTimerRef.current);
       AudioEngine.playRotaryPhone();
+
+      const activeLvl = currentLevelRef.current;
+      const callIndex = phoneCallCounterRef.current[activeLvl] ?? 0;
+      phoneCallCounterRef.current[activeLvl] = callIndex + 1;
+
+      const callLore = getLevelPhoneCall(activeLvl, callIndex);
+
       setActiveInspectItem({
-        id: 'phone_call',
+        id: callLore.id,
         type: 'phone',
-        name: 'The Static Voice',
-        description:
-          '...do not let the fluorescent lights turn off... when the hum drops, it crawls along the ceiling... find the 3 anchors... hurry...',
-        roomX: 0,
-        roomZ: 0,
-        localPos: [0, 0, 0],
+        name: callLore.caller,
+        description: callLore.transcript,
+        roomX: target.item.roomX,
+        roomZ: target.item.roomZ,
+        localPos: target.item.localPos,
       });
       inspectTimerRef.current = window.setTimeout(() => {
         setActiveInspectItem(null);
-      }, 8500);
+      }, 9000);
     } else if (target.type === 'exit') {
       const activeLvl = currentLevelRef.current;
       if (activeLvl === 0) {

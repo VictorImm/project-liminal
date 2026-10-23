@@ -4,6 +4,7 @@ import { TextureGenerator } from '../procedural/TextureGenerator';
 import { SvgHorrorArt } from '../procedural/SvgHorrorArt';
 import { AudioEngine } from '../audio/AudioEngine';
 import { createPoolWaterMaterial } from '../shaders/PoolWaterShader';
+import { getLevelPhoneCall } from '../data/LevelLore';
 
 export interface InteractionTarget {
   type: 'anchor' | 'battery' | 'note' | 'phone' | 'exit';
@@ -1462,14 +1463,14 @@ export class LiminalWorld {
     const phoneMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.4 });
     const boothPhone = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.5, 0.25), phoneMat);
     boothPhone.position.set(0, 1.4, -0.45);
+    const dreamCall0 = getLevelPhoneCall(0, 0);
     boothPhone.userData = {
       isInteractable: true,
       item: {
         id: 'phone_ridge_dream',
         type: 'phone',
-        name: 'The Solitary Ridge Telephone',
-        description:
-          '...warm tape hiss hums in your ear... a distant nostalgic operator speaks: "All circuits to 1999 are busy. The weather here will remain perpetual spring. You do not have to wake up yet..."',
+        name: dreamCall0.caller,
+        description: dreamCall0.transcript,
         roomX: 4,
         roomZ: 1,
         localPos: [0, 0, 0],

@@ -1,3 +1,5 @@
+import { getLevelNotes } from '../data/LevelLore';
+
 export type RoomBiome = 'mono_yellow' | 'poolroom' | 'archive' | 'sublevel_red' | 'exit_airlock' | 'dreamcore';
 
 export interface RoomDoor {
@@ -108,61 +110,29 @@ export class LabyrinthGenerator {
       });
 
       // Add peaceful nostalgic dreamcore lore notes distributed across panoramic knolls
-      const noteRoom1 = activeRooms.get('1,1');
-      if (noteRoom1) {
-        noteRoom1.items.push({
-          id: 'note_dream_1',
-          type: 'note',
-          name: 'A Faded Childhood Postcard',
-          description:
-            'Wish you were here. The clouds never move, and nothing here can hurt you. When you are ready to venture into the unknown, find the solitary white doorway resting on the eastern hill.',
-          roomX: 1,
-          roomZ: 1,
-          localPos: [1.2, 0.4, 0.8],
-        });
-      }
-
-      const noteRoom2 = activeRooms.get('3,3');
-      if (noteRoom2) {
-        noteRoom2.items.push({
-          id: 'note_dream_2',
-          type: 'note',
-          name: 'Weathered Journal Entry: 1997',
-          description:
-            'The air smells like warm rain and distant lilac. No 60Hz hum, no footsteps behind me. This is the sanctuary between worlds.',
-          roomX: 3,
-          roomZ: 3,
-          localPos: [-1.0, 0.4, -0.6],
-        });
-      }
-
-      const noteRoom3 = activeRooms.get('2,2');
-      if (noteRoom3) {
-        noteRoom3.items.push({
-          id: 'note_dream_3',
-          type: 'note',
-          name: 'Polaroid of the Playground (1995)',
-          description:
-            'The swings were still moving when we took the photo, but no one was sitting on them. It felt like someone had just left a second before.',
-          roomX: 2,
-          roomZ: 2,
-          localPos: [0.8, 0.4, 1.2],
-        });
-      }
-
-      const noteRoom4 = activeRooms.get('5,4');
-      if (noteRoom4) {
-        noteRoom4.items.push({
-          id: 'note_dream_4',
-          type: 'note',
-          name: 'Operator Transmission Note',
-          description:
-            'If the red telephone rings on the ridge, do not answer in a hurry. The voice on the line only remembers songs from before the threshold closed.',
-          roomX: 5,
-          roomZ: 4,
-          localPos: [-1.2, 0.4, 0.5],
-        });
-      }
+      const dreamNotes = getLevelNotes(0);
+      const dreamCoords: [string, [number, number, number]][] = [
+        ['1,1', [1.2, 0.4, 0.8]],
+        ['3,3', [-1.0, 0.4, -0.6]],
+        ['2,2', [0.8, 0.4, 1.2]],
+        ['5,4', [-1.2, 0.4, 0.5]],
+      ];
+      dreamNotes.forEach((note, idx) => {
+        const [coord, pos] = dreamCoords[idx] || ['1,1', [0, 0.4, 0]];
+        const [cx, cz] = coord.split(',').map(Number);
+        const room = activeRooms.get(coord);
+        if (room) {
+          room.items.push({
+            id: note.id,
+            type: 'note',
+            name: note.title,
+            description: note.text,
+            roomX: cx,
+            roomZ: cz,
+            localPos: pos,
+          });
+        }
+      });
 
       return {
         rooms: Array.from(activeRooms.values()),
@@ -540,79 +510,7 @@ export class LabyrinthGenerator {
     });
 
     // Level-specific Cryptic Notes & Lore
-    let levelNotes = [
-      {
-        id: 'note_1',
-        title: 'Facility Maintenance Notice',
-        text: 'The 60Hz hum must never stop. If the ballast sound drops to silence, turn off your flashlight and face the wall.',
-      },
-      {
-        id: 'note_2',
-        title: 'Torn Spiral Notebook Page',
-        text: 'Every yellow room looks identical, but there are 3 anchors that resonate. Collect them to unlock the airlock.',
-      },
-      {
-        id: 'note_3',
-        title: 'Memo to Sector 0 Personnel',
-        text: 'Do not follow voices calling from adjacent corridors. The carpet dampness increases near danger.',
-      },
-    ];
-
-    if (currentLevel === 2) {
-      levelNotes = [
-        {
-          id: 'note_1',
-          title: 'Sublimity Hydro-Log',
-          text: 'The pool water is warm and calm. Do not submerge your head; you will hear footsteps swimming beneath the floor tiles.',
-        },
-        {
-          id: 'note_2',
-          title: 'Diving Instructor Note',
-          text: 'Find the 3 submerged anchors (Brass Key, Fogged Goggles, Hydro-Vial) to pressurize the aqueduct airlock.',
-        },
-        {
-          id: 'note_3',
-          title: 'Scratched on White Tile',
-          text: 'The water ripples even when no one is moving. When the tiles turn dark, get out of the water.',
-        },
-      ];
-    } else if (currentLevel === 3) {
-      levelNotes = [
-        {
-          id: 'note_1',
-          title: 'Archive Curator Diary Entry',
-          text: 'Books here are dated up to the year 2340. None of them contain words, only numbers and floorplan blueprints.',
-        },
-        {
-          id: 'note_2',
-          title: 'Grand Hotel Reception Slip',
-          text: 'Room 304 cannot be locked from the outside. The 3 archives relics will open the vault door at the end of the hall.',
-        },
-        {
-          id: 'note_3',
-          title: 'Bookmarker Inscription',
-          text: 'Listen to the wooden floorboards creaking. It moves through the bookshelves when your back is turned.',
-        },
-      ];
-    } else if (currentLevel === 4) {
-      levelNotes = [
-        {
-          id: 'note_1',
-          title: 'Boiler Core Emergency Override',
-          text: 'Superheated steam exceeds 450°C. Do not touch metal grating without insulation. The red hazard lights signal its hunt.',
-        },
-        {
-          id: 'note_2',
-          title: 'Sub-Level 4 Engineering Protocol',
-          text: 'Collect the Valve, Fuse Core, and Hazard Filter to override the hydraulic blast gate.',
-        },
-        {
-          id: 'note_3',
-          title: 'Warning Painted in Rust',
-          text: 'The engine heartbeat you hear is not the machinery. Run when the pipes start hammering.',
-        },
-      ];
-    }
+    const levelNotes = getLevelNotes(currentLevel);
 
     levelNotes.forEach((note, idx) => {
       const roomCoord = nonSpecialRooms[(idx + 1) % nonSpecialRooms.length];
