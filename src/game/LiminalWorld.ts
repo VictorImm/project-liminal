@@ -298,9 +298,16 @@ export class LiminalWorld {
       this.scene.background = new THREE.Color(0x180503);
       this.scene.fog = new THREE.FogExp2(0x180503, 0.080);
     } else {
-      // Level 1: Yellow Halls (Classic warm mono-yellow Backrooms fog)
-      this.scene.background = new THREE.Color(0x130f04);
-      this.scene.fog = new THREE.FogExp2(0x130f04, 0.075);
+      // Level 1: Yellow Halls (Oppressive, warm mustard liminal Backrooms fog)
+      this.scene.background = new THREE.Color(0x161306);
+      this.scene.fog = new THREE.FogExp2(0x161306, 0.068);
+    }
+
+    // Set physically accurate texture tiling scales for Level 1
+    if (labyrinth.level === 1) {
+      this.textures.yellowWall.repeat.set(2, 1);
+      this.textures.carpet.repeat.set(4, 4);
+      this.textures.ceiling.repeat.set(4, 4);
     }
 
     // ponytail: shared material pool across all rooms avoids allocating hundreds of identical shaders
@@ -321,9 +328,9 @@ export class LiminalWorld {
         ceiling: new THREE.MeshStandardMaterial({ map: this.textures.corrugatedCeiling, roughness: 0.7, metalness: 0.6 }),
       },
       mono_yellow: {
-        wall: new THREE.MeshStandardMaterial({ map: this.textures.yellowWall, roughness: 0.7 }),
-        floor: new THREE.MeshStandardMaterial({ map: this.textures.carpet, roughness: 0.9 }),
-        ceiling: new THREE.MeshStandardMaterial({ map: this.textures.ceiling, roughness: 0.85 }),
+        wall: new THREE.MeshStandardMaterial({ map: this.textures.yellowWall, roughness: 0.75 }),
+        floor: new THREE.MeshStandardMaterial({ map: this.textures.carpet, roughness: 0.95 }),
+        ceiling: new THREE.MeshStandardMaterial({ map: this.textures.ceiling, roughness: 0.88 }),
       },
     };
     const sharedFloorGeo = new THREE.PlaneGeometry(this.roomSize, this.roomSize);
@@ -392,40 +399,50 @@ export class LiminalWorld {
       ceiling.position.set(rx, this.roomHeight, rz);
       roomGroup.add(ceiling);
 
-      // Ceiling Light Fixture (Fluorescent tube with luminescent glow)
-      const isWorkingLight = room.biome === 'exit_airlock' || Math.random() > 0.45;
+      // Ceiling Light Fixture (Fluorescent troffer fixture with luminescent glow)
+      // Level 1: ~84% working fixtures humming in endless repetition, ~16% dead/shadowed
+      const isWorkingLight = room.biome === 'exit_airlock' || (this.currentLevel === 1 ? Math.random() > 0.16 : Math.random() > 0.45);
       const fixtureEmissive = isWorkingLight ? new THREE.Color(room.lightColor) : new THREE.Color(0x18241b);
 
       const lightMat = new THREE.MeshStandardMaterial({
         color: isWorkingLight ? 0xffffff : 0x222222,
         emissive: fixtureEmissive,
-        emissiveIntensity: isWorkingLight ? 2.8 : 0.3,
+        emissiveIntensity: isWorkingLight ? 2.5 : 0.2,
         roughness: 0.2,
       });
 
+      // Commercial 2-tube fluorescent troffer fixture
       const lightMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(2.4, 0.1, 0.5),
+        new THREE.BoxGeometry(2.4, 0.08, 0.6),
         lightMat
       );
-      lightMesh.position.set(rx, this.roomHeight - 0.05, rz);
+      lightMesh.position.set(rx, this.roomHeight - 0.04, rz);
       roomGroup.add(lightMesh);
+
+      // Troffer steel frame border in Level 1
+      if (this.currentLevel === 1) {
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x5a5448, metalness: 0.5, roughness: 0.6 });
+        const trofferFrame = new THREE.Mesh(new THREE.BoxGeometry(2.52, 0.04, 0.72), frameMat);
+        trofferFrame.position.set(rx, this.roomHeight - 0.02, rz);
+        roomGroup.add(trofferFrame);
+      }
 
       // Soft Luminescent Light Halo underneath working fixtures
       if (isWorkingLight) {
         const halo = new THREE.Mesh(
-          new THREE.PlaneGeometry(3.6, 2.2),
+          new THREE.PlaneGeometry(3.8, 2.4),
           new THREE.MeshBasicMaterial({
             map: this.textures.softGlow,
             color: new THREE.Color(room.lightColor),
             transparent: true,
-            opacity: 0.4,
+            opacity: 0.35,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
             side: THREE.DoubleSide,
           })
         );
         halo.rotation.x = Math.PI / 2;
-        halo.position.set(rx, this.roomHeight - 0.12, rz);
+        halo.position.set(rx, this.roomHeight - 0.08, rz);
         roomGroup.add(halo);
       }
 
@@ -447,19 +464,23 @@ export class LiminalWorld {
       });
 
       // --- 3D PROPS SPECIFIC TO EACH LEVEL (ZERO REPETITION) ---
-      // Level 1: Office Cubicle Divider Partition & Metal Filing Cabinet
-      if (room.biome === 'mono_yellow' && Math.random() > 0.4) {
-        const dividerMat = new THREE.MeshStandardMaterial({ color: 0x8f886d, roughness: 0.8 });
-        const divider = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.8, 0.12), dividerMat);
-        divider.position.set(rx - 1.2, 0.9, rz + 1.2);
-        roomGroup.add(divider);
-        this.wallColliders.push(new THREE.Box3().setFromObject(divider));
-
-        const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x47494d, metalness: 0.7, roughness: 0.4 });
-        const cabinet = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.6, 0.6), cabinetMat);
-        cabinet.position.set(rx + 3.2, 0.8, rz - 3.2);
-        roomGroup.add(cabinet);
-        this.wallColliders.push(new THREE.Box3().setFromObject(cabinet));
+      // Level 1: Monochromatic Empty Office Corridors (Mundane, repetitive, uncanny emptiness)
+      if (room.biome === 'mono_yellow') {
+        // Occasional blank duplex outlet plate or HVAC ceiling return grille (18% of rooms)
+        const featureRoll = Math.random();
+        if (featureRoll > 0.85) {
+          const plateMat = new THREE.MeshStandardMaterial({ color: 0xc8be9c, roughness: 0.6 });
+          const plate = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.02), plateMat);
+          plate.position.set(rx + half - 0.02, 0.45, rz + 1.2);
+          roomGroup.add(plate);
+        } else if (featureRoll < 0.12) {
+          // Dark recessed HVAC ceiling vent grille
+          const ventMat = new THREE.MeshStandardMaterial({ color: 0x484338, roughness: 0.7 });
+          const vent = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), ventMat);
+          vent.rotation.x = Math.PI / 2;
+          vent.position.set(rx - 1.8, this.roomHeight - 0.01, rz + 1.8);
+          roomGroup.add(vent);
+        }
       }
 
       // Level 2: Sublimity Poolroom Tiled Columns & Stainless Pool Ladder
@@ -616,31 +637,14 @@ export class LiminalWorld {
         amberBeacon.position.set(rx - half + 0.18, 1.8, rz - 2.0);
         roomGroup.add(amberBeacon);
       } else {
-        // Yellow Halls: Dual wall electrical conduit boxes with bright green & amber status LEDs
-        const boxMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.5 });
-        const boxMesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.09), boxMat);
-        boxMesh.position.set(rx + half - 0.15, 1.7, rz);
-        roomGroup.add(boxMesh);
-
-        // Emerald LED
-        const ledMatGreen = new THREE.MeshStandardMaterial({
-          color: 0x00ff88,
-          emissive: 0x00ff88,
-          emissiveIntensity: 3.5,
-        });
-        const ledGreen = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), ledMatGreen);
-        ledGreen.position.set(rx + half - 0.2, 1.8, rz);
-        roomGroup.add(ledGreen);
-
-        // Floor baseboard amber emergency marker diode along opposing wall
-        const markerMat = new THREE.MeshStandardMaterial({
-          color: 0xf59e0b,
-          emissive: 0xf59e0b,
-          emissiveIntensity: 3.2,
-        });
-        const marker = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 0.05), markerMat);
-        marker.position.set(rx - half + 0.1, 0.12, rz);
-        roomGroup.add(marker);
+        // Yellow Halls: Pure classic Backrooms walls (Zero sci-fi LEDs or modern indicator lights)
+        if (Math.random() > 0.88) {
+          // Occasional dull grey utility junction box with no LEDs
+          const boxMat = new THREE.MeshStandardMaterial({ color: 0x3a362c, roughness: 0.7 });
+          const boxMesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, 0.08), boxMat);
+          boxMesh.position.set(rx + half - 0.04, 1.6, rz);
+          roomGroup.add(boxMesh);
+        }
       }
 
       // Build 4 Walls (with doorways for connected rooms)
@@ -649,8 +653,8 @@ export class LiminalWorld {
       this.buildWall(rx, rz, 'east', room.doors.some((d) => d.direction === 'east'), mats.wall, roomGroup);
       this.buildWall(rx, rz, 'west', room.doors.some((d) => d.direction === 'west'), mats.wall, roomGroup);
 
-      // Wall picture frames / art
-      if (room.artSeed !== undefined && room.biome !== 'exit_airlock') {
+      // Wall picture frames / art (Poolrooms polaroids, Sublevel diagrams, Archive portraits; NEVER in Level 1 Backrooms)
+      if (room.artSeed !== undefined && room.biome !== 'exit_airlock' && room.biome !== 'mono_yellow') {
         const artTexture = SvgHorrorArt.createArtTexture(
           room.artSeed,
           room.biome === 'sublevel_red' ? 'diagram' : room.biome === 'poolroom' ? 'polaroid' : 'portrait'
@@ -1364,6 +1368,21 @@ export class LiminalWorld {
 
       const box = new THREE.Box3().setFromObject(wall);
       this.wallColliders.push(box);
+
+      // Level 1 Backrooms: Dark vinyl cove baseboard along floor line
+      if (this.currentLevel === 1) {
+        const bbGeo = new THREE.BoxGeometry(
+          dir === 'north' || dir === 'south' ? this.roomSize : wallThick + 0.04,
+          0.12,
+          dir === 'east' || dir === 'west' ? this.roomSize : wallThick + 0.04
+        );
+        const baseboard = new THREE.Mesh(
+          bbGeo,
+          new THREE.MeshStandardMaterial({ color: 0x362f1e, roughness: 0.7 })
+        );
+        baseboard.position.set(wx, 0.06, wz);
+        parentGroup.add(baseboard);
+      }
     } else {
       // Wall with central doorway opening
       const segmentWidth = (this.roomSize - doorWidth) / 2;
@@ -1373,6 +1392,20 @@ export class LiminalWorld {
         seg.position.set(offsetX, this.roomHeight / 2, offsetZ);
         parentGroup.add(seg);
         this.wallColliders.push(new THREE.Box3().setFromObject(seg));
+
+        // Baseboard on doorway wall segments in Level 1
+        if (this.currentLevel === 1) {
+          const bbSeg = new THREE.Mesh(
+            new THREE.BoxGeometry(
+              dir === 'north' || dir === 'south' ? w : d + 0.04,
+              0.12,
+              dir === 'east' || dir === 'west' ? w : d + 0.04
+            ),
+            new THREE.MeshStandardMaterial({ color: 0x362f1e, roughness: 0.7 })
+          );
+          bbSeg.position.set(offsetX, 0.06, offsetZ);
+          parentGroup.add(bbSeg);
+        }
       };
 
       if (dir === 'north' || dir === 'south') {
@@ -1388,17 +1421,19 @@ export class LiminalWorld {
         header.position.set(rx, this.roomHeight - (this.roomHeight - doorHeight) / 2, wz);
         parentGroup.add(header);
 
-        // Doorway Threshold Lintel Guidance Beacon (Pure Emissive Beacon - Zero PointLight)
-        const diodeColor =
-          this.currentLevel === 2 ? 0x00f5d4 : this.currentLevel === 4 ? 0xff4d26 : this.currentLevel === 3 ? 0xf59e0b : 0x38bdf8;
-        const diodeMat = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          emissive: diodeColor,
-          emissiveIntensity: 3.5,
-        });
-        const diode = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.08), diodeMat);
-        diode.position.set(rx, doorHeight + 0.08, wz);
-        parentGroup.add(diode);
+        // Doorway Threshold Lintel Guidance Beacon (Pure Emissive Beacon - NEVER in classic Level 1)
+        if (this.currentLevel !== 1) {
+          const diodeColor =
+            this.currentLevel === 2 ? 0x00f5d4 : this.currentLevel === 4 ? 0xff4d26 : this.currentLevel === 3 ? 0xf59e0b : 0x38bdf8;
+          const diodeMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: diodeColor,
+            emissiveIntensity: 3.5,
+          });
+          const diode = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.08), diodeMat);
+          diode.position.set(rx, doorHeight + 0.08, wz);
+          parentGroup.add(diode);
+        }
       } else {
         const wx = dir === 'west' ? rx - half : rx + half;
         createSegment(wx, rz - half + segmentWidth / 2, wallThick, segmentWidth);
@@ -1412,17 +1447,19 @@ export class LiminalWorld {
         header.position.set(wx, this.roomHeight - (this.roomHeight - doorHeight) / 2, rz);
         parentGroup.add(header);
 
-        // Doorway Threshold Lintel Guidance Beacon (Pure Emissive Beacon - Zero PointLight)
-        const diodeColor =
-          this.currentLevel === 2 ? 0x00f5d4 : this.currentLevel === 4 ? 0xff4d26 : this.currentLevel === 3 ? 0xf59e0b : 0x38bdf8;
-        const diodeMat = new THREE.MeshStandardMaterial({
-          color: 0xffffff,
-          emissive: diodeColor,
-          emissiveIntensity: 3.5,
-        });
-        const diode = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.35), diodeMat);
-        diode.position.set(wx, doorHeight + 0.08, rz);
-        parentGroup.add(diode);
+        // Doorway Threshold Lintel Guidance Beacon (Pure Emissive Beacon - NEVER in classic Level 1)
+        if (this.currentLevel !== 1) {
+          const diodeColor =
+            this.currentLevel === 2 ? 0x00f5d4 : this.currentLevel === 4 ? 0xff4d26 : this.currentLevel === 3 ? 0xf59e0b : 0x38bdf8;
+          const diodeMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: diodeColor,
+            emissiveIntensity: 3.5,
+          });
+          const diode = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.35), diodeMat);
+          diode.position.set(wx, doorHeight + 0.08, rz);
+          parentGroup.add(diode);
+        }
       }
     }
   }
@@ -1768,9 +1805,10 @@ export class LiminalWorld {
       }
     }
 
+    const timeSec = performance.now() * 0.001;
+
     // Floating monolith rotation, cloud drift, motes sway & balloon bob in Dreamcore (direct array, zero scene traversal)
     if (this.currentLevel === 0 && this.dreamAnimatedObjects.length > 0) {
-      const timeSec = performance.now() * 0.001;
       for (let i = 0; i < this.dreamAnimatedObjects.length; i++) {
         const entry = this.dreamAnimatedObjects[i];
         const obj = entry.obj;
@@ -1796,15 +1834,23 @@ export class LiminalWorld {
       }
     }
 
-    // Flickering ceiling light fixtures (updates roomLightNodes & emissive mesh)
+    // Flickering ceiling light fixtures (realistic intermittent starter sputter, non-exhausting)
     for (let i = 0; i < this.roomLightNodes.length; i++) {
       const node = this.roomLightNodes[i];
-      if (node.flicker && Math.random() > 0.985) {
-        const off = Math.random() > 0.4;
-        node.intensity = off ? 0.05 : node.baseIntensity;
+      if (node.flicker) {
+        // Restrained, periodic electrical sputter (~7.5s cycle)
+        const cycle = (timeSec * 3.2 + i * 1.9) % 7.5;
+        let off = false;
+        if (cycle < 0.28) {
+          off = Math.sin(cycle * 42) > 0.15;
+        }
+        node.intensity = off ? 0.08 : node.baseIntensity;
         const mat = node.mesh.material as THREE.MeshStandardMaterial;
-        mat.color.setHex(off ? 0x222222 : 0xffffff);
-        mat.emissive.copy(off ? new THREE.Color(0x18241b) : node.color);
+        if (mat) {
+          mat.color.setHex(off ? 0x2e2e2e : 0xffffff);
+          mat.emissive.copy(off ? new THREE.Color(0x181e18) : node.color);
+          mat.emissiveIntensity = off ? 0.25 : 2.5;
+        }
       }
     }
 

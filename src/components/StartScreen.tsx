@@ -312,6 +312,12 @@ export const StartScreen: React.FC<StartScreenProps> = ({ onStartGame }) => {
               <kbd>WASD</kbd> Move
             </span>
             <span className="flex items-center gap-1 px-2 py-1 bg-zinc-900 border border-zinc-800 rounded font-bold text-zinc-300">
+              <kbd>SHIFT</kbd> Sprint
+            </span>
+            <span className="flex items-center gap-1 px-2 py-1 bg-zinc-900 border border-zinc-800 rounded font-bold text-zinc-300">
+              <kbd>C</kbd> / <kbd>CTRL</kbd> Crouch
+            </span>
+            <span className="flex items-center gap-1 px-2 py-1 bg-zinc-900 border border-zinc-800 rounded font-bold text-zinc-300">
               <kbd>MOUSE</kbd> Look
             </span>
             <span className="flex items-center gap-1 px-2 py-1 bg-zinc-900 border border-zinc-800 rounded font-bold text-zinc-300">

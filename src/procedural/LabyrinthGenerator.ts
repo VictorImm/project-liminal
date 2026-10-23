@@ -342,7 +342,8 @@ export class LabyrinthGenerator {
           lightColor = '#ef4444';
         } else {
           biome = 'mono_yellow';
-          lightColor = '#fef08a';
+          // Authentic commercial 4100K fluorescent ballast tint (cold aged off-white, not saturated yellow)
+          lightColor = '#eae2b7';
         }
       }
 
@@ -367,13 +368,15 @@ export class LabyrinthGenerator {
         }
       });
 
+      // Level 1: Restrained light flicker in ~12% of rooms so it feels eerie and uncanny rather than visually exhausting
+      const flickerChance = currentLevel === 1 ? 0.88 : 0.55;
       const room: MapRoom = {
         x: coord.x,
         z: coord.z,
         biome,
         doors,
         items: [],
-        hasLightFlicker: rng.next() > 0.45,
+        hasLightFlicker: rng.next() > flickerChance,
         lightColor,
         artSeed: Math.floor(rng.next() * 10000),
       };

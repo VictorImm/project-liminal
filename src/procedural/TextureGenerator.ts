@@ -5,40 +5,75 @@ import * as THREE from 'three';
  * Creates seamless materials for walls, floors, ceilings, and signs without any external image files.
  */
 export class TextureGenerator {
-  // Yellow Backrooms Damp Wallpaper
+  // Classic Backrooms Damp Yellow Wallpaper (Faded mustard, vintage watermark, damp seams)
   static createYellowWallpaperTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    // Base mono-yellow
-    ctx.fillStyle = '#bfad63';
+    // Base aged mono-yellow tone
+    ctx.fillStyle = '#bda85d';
     ctx.fillRect(0, 0, 512, 512);
 
-    // Subtle stripe / vintage pattern
-    ctx.fillStyle = '#ab9850';
-    for (let x = 0; x < 512; x += 32) {
-      ctx.fillRect(x, 0, 8, 512);
+    // Subtle alternating wallpaper panel strips (128px rolls)
+    for (let x = 0; x < 512; x += 128) {
+      ctx.fillStyle = x % 256 === 0 ? 'rgba(175, 154, 80, 0.22)' : 'rgba(205, 184, 105, 0.15)';
+      ctx.fillRect(x, 0, 128, 512);
+
+      // Fine seam between wallpaper panels
+      ctx.fillStyle = 'rgba(70, 60, 25, 0.35)';
+      ctx.fillRect(x, 0, 1.5, 512);
+      ctx.fillStyle = 'rgba(240, 225, 160, 0.15)';
+      ctx.fillRect(x + 1.5, 0, 1, 512);
     }
 
-    // Organic damp noise / grime stains
+    // Subtle vintage damask / repeating vertical office wallpaper micro-pattern
+    ctx.strokeStyle = 'rgba(145, 128, 62, 0.25)';
+    ctx.lineWidth = 1.2;
+    for (let x = 16; x < 512; x += 32) {
+      for (let y = 16; y < 512; y += 48) {
+        // Small faded diamond/fleur motif
+        ctx.beginPath();
+        ctx.moveTo(x, y - 10);
+        ctx.lineTo(x + 7, y);
+        ctx.lineTo(x, y + 10);
+        ctx.lineTo(x - 7, y);
+        ctx.closePath();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(145, 128, 62, 0.18)';
+        ctx.fill();
+      }
+    }
+
+    // Organic damp paper noise & grime
     const imgData = ctx.getImageData(0, 0, 512, 512);
     const data = imgData.data;
     for (let i = 0; i < data.length; i += 4) {
-      const noise = (Math.random() - 0.5) * 35;
+      const noise = (Math.random() - 0.5) * 32;
       data[i] = Math.max(0, Math.min(255, data[i] + noise));
       data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + noise));
       data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + noise));
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // Add water stain seepage
-    const gradient = ctx.createRadialGradient(256, 512, 50, 256, 512, 350);
-    gradient.addColorStop(0, 'rgba(80, 70, 35, 0.45)');
-    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 512, 512);
+    // Water stain seepage at bottom (rising from damp carpet)
+    const baseGradient = ctx.createLinearGradient(0, 512, 0, 320);
+    baseGradient.addColorStop(0, 'rgba(65, 55, 25, 0.60)');
+    baseGradient.addColorStop(0.35, 'rgba(85, 75, 35, 0.30)');
+    baseGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = baseGradient;
+    ctx.fillRect(0, 320, 512, 192);
+
+    // Organic damp moisture patches along wall
+    const patchGrad = ctx.createRadialGradient(160, 420, 20, 160, 420, 180);
+    patchGrad.addColorStop(0, 'rgba(75, 65, 28, 0.40)');
+    patchGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = patchGrad;
+    ctx.fillRect(0, 200, 320, 312);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
@@ -94,25 +129,61 @@ export class TextureGenerator {
     return texture;
   }
 
-  // Damp Moldy Carpet Floor
+  // Authentic Moist Office Carpet Floor (50x50cm modular tiles, water stain rings, loop pile)
   static createCarpetTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    ctx.fillStyle = '#8a7d48';
-    ctx.fillRect(0, 0, 256, 256);
+    // Dirty mustard / brownish-yellow base
+    ctx.fillStyle = '#786c38';
+    ctx.fillRect(0, 0, 512, 512);
 
-    const imgData = ctx.getImageData(0, 0, 256, 256);
+    // Modular 4x4 commercial carpet tiles (128x128px each)
+    const tileSize = 128;
+    for (let x = 0; x < 512; x += tileSize) {
+      for (let y = 0; y < 512; y += tileSize) {
+        // Subtle directional pile shift per tile
+        const shift = ((x + y) / tileSize) % 2 === 0 ? 8 : -8;
+        ctx.fillStyle = `rgba(${118 + shift}, ${106 + shift}, ${55 + shift}, 0.25)`;
+        ctx.fillRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
+
+        // Subtle tile seam border
+        ctx.strokeStyle = 'rgba(45, 40, 18, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x, y, tileSize, tileSize);
+      }
+    }
+
+    // Dense organic loop-pile stippling noise
+    const imgData = ctx.getImageData(0, 0, 512, 512);
     const data = imgData.data;
     for (let i = 0; i < data.length; i += 4) {
-      const grain = (Math.random() - 0.5) * 55;
+      const grain = (Math.random() - 0.5) * 48;
       data[i] = Math.max(0, Math.min(255, data[i] + grain));
       data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + grain));
       data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + grain));
     }
     ctx.putImageData(imgData, 0, 0);
+
+    // Water damage puddles & evaporation rings (The classic "stink of old moist carpet")
+    const drawWaterRing = (cx: number, cy: number, r: number) => {
+      // Dark wet center
+      const grad = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
+      grad.addColorStop(0, 'rgba(42, 36, 16, 0.45)');
+      grad.addColorStop(0.7, 'rgba(55, 48, 22, 0.35)');
+      grad.addColorStop(0.92, 'rgba(35, 30, 12, 0.55)'); // dark edge evaporation ring
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
+    drawWaterRing(140, 160, 95);
+    drawWaterRing(380, 360, 120);
+    drawWaterRing(220, 420, 65);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
@@ -120,32 +191,80 @@ export class TextureGenerator {
     return texture;
   }
 
-  // Acoustic Ceiling Tiles
+  // 1990s Drop-Ceiling Acoustic Tiles (Armstrong-style beveled T-bar grid & acoustic fissure worms)
   static createCeilingTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    ctx.fillStyle = '#ded9cf';
-    ctx.fillRect(0, 0, 256, 256);
+    // Faded aged beige / off-white acoustic tile base
+    ctx.fillStyle = '#cbc4b4';
+    ctx.fillRect(0, 0, 512, 512);
 
-    // Grid lines for 2x2 drop-ceiling tiles
-    ctx.strokeStyle = '#7c766b';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(0, 0, 256, 256);
-    ctx.strokeRect(0, 0, 128, 128);
-    ctx.strokeRect(128, 0, 128, 128);
-    ctx.strokeRect(0, 128, 128, 128);
-    ctx.strokeRect(128, 128, 128, 128);
+    const tileSize = 256;
+    for (let x = 0; x < 512; x += tileSize) {
+      for (let y = 0; y < 512; y += tileSize) {
+        // Individual tile recessed surface
+        ctx.fillStyle = '#d3ccc0';
+        ctx.fillRect(x + 4, y + 4, tileSize - 8, tileSize - 8);
 
-    // Speckled acoustic dots
-    ctx.fillStyle = '#9e978a';
-    for (let i = 0; i < 300; i++) {
-      const px = Math.random() * 256;
-      const py = Math.random() * 256;
-      ctx.fillRect(px, py, 2, 2);
+        // Acoustic worm fissures (irregular worm scratches typical of acoustic drop ceilings)
+        ctx.strokeStyle = 'rgba(100, 94, 82, 0.45)';
+        ctx.lineWidth = 1.8;
+        for (let k = 0; k < 45; k++) {
+          const fx = x + 16 + Math.random() * (tileSize - 32);
+          const fy = y + 16 + Math.random() * (tileSize - 32);
+          const len = 4 + Math.random() * 9;
+          const angle = Math.random() * Math.PI;
+
+          ctx.beginPath();
+          ctx.moveTo(fx, fy);
+          ctx.quadraticCurveTo(
+            fx + Math.cos(angle) * (len / 2) + (Math.random() - 0.5) * 4,
+            fy + Math.sin(angle) * (len / 2) + (Math.random() - 0.5) * 4,
+            fx + Math.cos(angle) * len,
+            fy + Math.sin(angle) * len
+          );
+          ctx.stroke();
+        }
+
+        // Fine acoustic stippling dots
+        ctx.fillStyle = 'rgba(90, 84, 72, 0.35)';
+        for (let p = 0; p < 80; p++) {
+          const px = x + 8 + Math.random() * (tileSize - 16);
+          const py = y + 8 + Math.random() * (tileSize - 16);
+          ctx.fillRect(px, py, 1.8, 1.8);
+        }
+
+        // Beveled T-bar suspension grid border
+        // Top & Left highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fillRect(x, y, tileSize, 2);
+        ctx.fillRect(x, y, 2, tileSize);
+
+        // Bottom & Right shadow
+        ctx.fillStyle = 'rgba(50, 46, 38, 0.50)';
+        ctx.fillRect(x, y + tileSize - 3, tileSize, 3);
+        ctx.fillRect(x + tileSize - 3, y, 3, tileSize);
+
+        // Metal T-bar runner line
+        ctx.strokeStyle = '#6e675b';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
+      }
     }
+
+    // Yellow-brown water stain leakage in one tile corner (condensation drip)
+    const leakGrad = ctx.createRadialGradient(256, 256, 10, 256, 256, 110);
+    leakGrad.addColorStop(0, 'rgba(110, 85, 40, 0.45)');
+    leakGrad.addColorStop(0.7, 'rgba(130, 105, 55, 0.25)');
+    leakGrad.addColorStop(0.95, 'rgba(90, 70, 30, 0.40)'); // dark evaporation ring
+    leakGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = leakGrad;
+    ctx.beginPath();
+    ctx.arc(256, 256, 110, 0, Math.PI * 2);
+    ctx.fill();
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;

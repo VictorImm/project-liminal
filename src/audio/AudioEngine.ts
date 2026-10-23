@@ -104,7 +104,7 @@ class AudioEngineClass {
   private initFluorescentHum() {
     if (!this.ctx || !this.masterGain) return;
 
-    // 60Hz main hum + 120Hz harmonic
+    // 60Hz main hum + 120Hz, 180Hz, 300Hz transformer electrical ballast harmonics
     const osc60 = this.ctx.createOscillator();
     osc60.type = 'sawtooth';
     osc60.frequency.setValueAtTime(60, this.ctx.currentTime);
@@ -113,22 +113,42 @@ class AudioEngineClass {
     osc120.type = 'sine';
     osc120.frequency.setValueAtTime(120, this.ctx.currentTime);
 
+    const osc180 = this.ctx.createOscillator();
+    osc180.type = 'triangle';
+    osc180.frequency.setValueAtTime(180, this.ctx.currentTime);
+
+    const osc300 = this.ctx.createOscillator();
+    osc300.type = 'sine';
+    osc300.frequency.setValueAtTime(300, this.ctx.currentTime);
+
     // Filter to give that metallic ballast resonance
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(320, this.ctx.currentTime);
-    filter.Q.setValueAtTime(4.0, this.ctx.currentTime);
+    filter.frequency.setValueAtTime(380, this.ctx.currentTime);
+    filter.Q.setValueAtTime(3.5, this.ctx.currentTime);
 
     this.humGain = this.ctx.createGain();
     this.humGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
 
+    const gain180 = this.ctx.createGain();
+    gain180.gain.setValueAtTime(0.35, this.ctx.currentTime);
+    osc180.connect(gain180);
+
+    const gain300 = this.ctx.createGain();
+    gain300.gain.setValueAtTime(0.2, this.ctx.currentTime);
+    osc300.connect(gain300);
+
     osc60.connect(filter);
     osc120.connect(filter);
+    gain180.connect(filter);
+    gain300.connect(filter);
     filter.connect(this.humGain);
     this.humGain.connect(this.masterGain);
 
     osc60.start();
     osc120.start();
+    osc180.start();
+    osc300.start();
   }
 
   public setHumFlicker(flicker: boolean) {

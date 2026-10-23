@@ -158,7 +158,7 @@ export class FPSControls {
     }
 
     const isSprint = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) && !this.isCrouching;
-    const isCrouch = this.keys['KeyC'];
+    const isCrouch = Boolean(this.keys['KeyC'] || this.keys['ControlLeft'] || this.keys['ControlRight']);
     this.isSprinting = isSprint;
     this.isCrouching = isCrouch;
 

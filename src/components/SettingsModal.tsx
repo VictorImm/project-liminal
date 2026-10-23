@@ -390,6 +390,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   Locate all 3 Reality Anchors scattered throughout this sector. Deposit them at the exit airlock sockets to breach the containment seal and descend.
                 </span>
               </div>
+
+              {/* Keyboard Controls Guide */}
+              <div className="border border-zinc-800/80 bg-zinc-900/40 p-4 rounded-xl text-xs space-y-2.5">
+                <div className="text-zinc-300 font-bold uppercase tracking-wider text-[11px]">
+                  Expedition Controls Reference:
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-zinc-400 text-[11px]">
+                  <div><kbd className="px-1.5 py-0.5 bg-black/80 border border-zinc-700 rounded text-zinc-300 font-bold mr-1.5">WASD</kbd> Move</div>
+                  <div><kbd className="px-1.5 py-0.5 bg-black/80 border border-zinc-700 rounded text-zinc-300 font-bold mr-1.5">SHIFT</kbd> Sprint</div>
+                  <div><kbd className="px-1.5 py-0.5 bg-black/80 border border-zinc-700 rounded text-zinc-300 font-bold mr-1.5">C / CTRL</kbd> Crouch</div>
+                  <div><kbd className="px-1.5 py-0.5 bg-black/80 border border-zinc-700 rounded text-zinc-300 font-bold mr-1.5">F</kbd> Flashlight</div>
+                  <div><kbd className="px-1.5 py-0.5 bg-black/80 border border-zinc-700 rounded text-zinc-300 font-bold mr-1.5">E / LMB</kbd> Interact</div>
+                  <div><kbd className="px-1.5 py-0.5 bg-black/80 border border-zinc-700 rounded text-zinc-300 font-bold mr-1.5">M</kbd> Minimap</div>
+                </div>
+              </div>
             </div>
           )}
 
