@@ -341,7 +341,8 @@ export class LabyrinthGenerator {
           lightColor = '#fed7aa';
         } else if (currentLevel === 4) {
           biome = 'sublevel_red';
-          lightColor = '#ef4444';
+          // Authentic industrial high-pressure sodium amber / warning tint
+          lightColor = '#f59e0b';
         } else {
           biome = 'mono_yellow';
           // Authentic commercial 4100K fluorescent ballast tint (cold aged off-white, not saturated yellow)

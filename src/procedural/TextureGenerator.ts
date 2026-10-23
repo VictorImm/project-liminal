@@ -470,33 +470,87 @@ export class TextureGenerator {
     return texture;
   }
 
-  // Level 4: Industrial Diamond Plate Steel Grating Floor
+  // Level 4: Cast-Iron Drainage Grating & Oiled Industrial Treadplate Floor
   static createIndustrialFloorTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    // Dark iron
-    ctx.fillStyle = '#1c1f24';
-    ctx.fillRect(0, 0, 256, 256);
+    // Oiled cold dark steel base
+    ctx.fillStyle = '#14171b';
+    ctx.fillRect(0, 0, 512, 512);
 
-    // Diamond steel treadplate marks
-    ctx.fillStyle = '#3a4049';
-    for (let x = 0; x < 256; x += 32) {
-      for (let y = 0; y < 256; y += 32) {
-        ctx.save();
-        ctx.translate(x + 16, y + 16);
-        ctx.rotate(Math.PI / 4);
-        ctx.fillRect(-6, -2, 12, 4);
-        ctx.restore();
+    // 4 modular floor quadrant tiles (256x256 each)
+    const qSize = 256;
+    for (let qx = 0; qx < 512; qx += qSize) {
+      for (let qy = 0; qy < 512; qy += qSize) {
+        // Tile panel plate
+        ctx.fillStyle = (qx + qy) % 512 === 0 ? '#1b2026' : '#181d22';
+        ctx.fillRect(qx + 6, qy + 6, qSize - 12, qSize - 12);
+
+        // Anti-slip diamond steel treadplate pattern
+        ctx.fillStyle = '#2d3540';
+        for (let x = qx + 20; x < qx + qSize - 20; x += 32) {
+          for (let y = qy + 20; y < qy + qSize - 20; y += 32) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillRect(-7, -2.5, 14, 5);
+            ctx.fillStyle = '#424d5c'; // Highlight
+            ctx.fillRect(-7, -2.5, 14, 1.5);
+            ctx.fillStyle = '#2d3540';
+            ctx.restore();
+          }
+        }
+
+        // Corner hex bolts on plate corners
+        const corners = [
+          [qx + 14, qy + 14],
+          [qx + qSize - 14, qy + 14],
+          [qx + 14, qy + qSize - 14],
+          [qx + qSize - 14, qy + qSize - 14],
+        ];
+        corners.forEach(([bx, by]) => {
+          ctx.fillStyle = '#0e1114';
+          ctx.beginPath();
+          ctx.arc(bx, by, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#566270';
+          ctx.beginPath();
+          ctx.arc(bx - 1, by - 1, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
       }
     }
 
-    // Rust oxidation spots
-    ctx.fillStyle = 'rgba(120, 45, 20, 0.35)';
-    ctx.fillRect(20, 40, 80, 60);
-    ctx.fillRect(140, 160, 90, 70);
+    // Heavy drainage gutter channel between quadrants (Cross)
+    ctx.fillStyle = '#090b0d';
+    ctx.fillRect(250, 0, 12, 512);
+    ctx.fillRect(0, 250, 512, 12);
+
+    // Cast-iron drainage grating slots in gutter
+    ctx.fillStyle = '#040506';
+    for (let y = 8; y < 512; y += 16) {
+      ctx.fillRect(252, y, 8, 8);
+    }
+    for (let x = 8; x < 512; x += 16) {
+      ctx.fillRect(x, 252, 8, 8);
+    }
+
+    // Dark hydraulic grease & oil puddle slicks
+    ctx.fillStyle = 'rgba(7, 9, 11, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse(140, 180, 55, 38, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(370, 340, 68, 44, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dark rust oxidation spots
+    ctx.fillStyle = 'rgba(95, 38, 16, 0.32)';
+    ctx.fillRect(40, 60, 60, 50);
+    ctx.fillRect(320, 110, 80, 45);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
@@ -504,38 +558,83 @@ export class TextureGenerator {
     return texture;
   }
 
-  // Level 4: Heavy Steel Wall with Yellow/Black Hazard Stripes
+  // Level 4: Heavy Riveted Boiler Steel Wall with Weathered Hazard Markings
   static createHazardWallTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    // Iron wall base
-    ctx.fillStyle = '#22262b';
+    // Cold boiler steel plate base
+    ctx.fillStyle = '#1e2328';
     ctx.fillRect(0, 0, 512, 512);
 
-    // Steel plate seams & rivets
-    ctx.strokeStyle = '#111417';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(8, 8, 496, 496);
+    // Vertical steel panel divider seams
+    ctx.fillStyle = '#121519';
+    ctx.fillRect(170, 0, 6, 512);
+    ctx.fillRect(342, 0, 6, 512);
 
-    // Yellow and black diagonal hazard warning stripe band along center
-    const bandY = 200;
-    const bandHeight = 112;
-    ctx.fillStyle = '#111';
+    // Perimeter weld border
+    ctx.strokeStyle = '#121519';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, 504, 504);
+
+    // Heavy industrial rivet rows along seams & borders
+    const rivetX = [14, 162, 180, 334, 352, 498];
+    for (let rx of rivetX) {
+      for (let y = 20; y < 512; y += 32) {
+        ctx.fillStyle = '#0d0f12';
+        ctx.beginPath();
+        ctx.arc(rx, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#424c57';
+        ctx.beginPath();
+        ctx.arc(rx - 1, y - 1, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Weathered & scuffed diagonal hazard warning stripe band along center (y: 205 to 305)
+    const bandY = 205;
+    const bandHeight = 100;
+    ctx.fillStyle = '#151719';
     ctx.fillRect(0, bandY, 512, bandHeight);
 
-    ctx.fillStyle = '#eab308'; // Warning yellow
-    for (let x = -512; x < 1024; x += 64) {
+    // Weathered industrial yellow stripes
+    ctx.fillStyle = '#d99b16';
+    for (let x = -512; x < 1024; x += 54) {
       ctx.beginPath();
       ctx.moveTo(x, bandY);
-      ctx.lineTo(x + 32, bandY);
-      ctx.lineTo(x + 32 + bandHeight, bandY + bandHeight);
+      ctx.lineTo(x + 26, bandY);
+      ctx.lineTo(x + 26 + bandHeight, bandY + bandHeight);
       ctx.lineTo(x + bandHeight, bandY + bandHeight);
       ctx.closePath();
       ctx.fill();
     }
+
+    // Weathering scuffs & scratches on hazard band
+    ctx.strokeStyle = '#1a1f24';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 20; i++) {
+      const sx = Math.random() * 512;
+      const sy = bandY + Math.random() * bandHeight;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + 15 + Math.random() * 25, sy + (Math.random() - 0.5) * 8);
+      ctx.stroke();
+    }
+
+    // Grease and rust drip seepages dripping down from top rivets
+    ctx.fillStyle = 'rgba(10, 8, 6, 0.42)';
+    ctx.fillRect(174, 0, 16, 180);
+    ctx.fillRect(346, 0, 22, 230);
+    ctx.fillRect(80, 0, 12, 130);
+
+    // Stenciled machinery unit designation markings
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = 'rgba(140, 155, 170, 0.45)';
+    ctx.fillText('SUB-CORE 04 // BOILER SECTOR B', 28, 60);
+    ctx.fillText('MAX PRESSURE: 350 PSI // CAUTION', 28, 80);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
@@ -942,38 +1041,149 @@ export class TextureGenerator {
     return tex;
   }
 
-  // Level 4 Ceiling: Industrial Corrugated Steel Deck with Rust
+  // Level 4 Ceiling: Industrial Corrugated Steel Deck with Structural I-Beams & Soot
   static createCorrugatedCeilingTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    ctx.fillStyle = '#181b20';
+    // Cold dark industrial steel base
+    ctx.fillStyle = '#16191d';
     ctx.fillRect(0, 0, 512, 512);
 
-    // Corrugated iron ribs
+    // Corrugated iron ribs with 3D shadow/highlight gradient
     for (let x = 0; x < 512; x += 32) {
-      ctx.fillStyle = '#2b313a';
+      ctx.fillStyle = '#252a32';
       ctx.fillRect(x, 0, 16, 512);
-      ctx.fillStyle = '#121417';
+      ctx.fillStyle = '#363d47';
+      ctx.fillRect(x, 0, 3, 512); // Rib edge highlight
+      ctx.fillStyle = '#101216';
       ctx.fillRect(x + 16, 0, 16, 512);
     }
 
-    // Rust seepage streaks
-    ctx.fillStyle = 'rgba(100, 35, 15, 0.45)';
-    ctx.fillRect(40, 0, 80, 300);
-    ctx.fillRect(260, 100, 120, 412);
+    // Heavy dark soot and heat burn plumes from boiler vents
+    ctx.fillStyle = 'rgba(6, 7, 9, 0.65)';
+    ctx.beginPath();
+    ctx.arc(160, 256, 120, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(380, 180, 95, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Cross I-beams
-    ctx.fillStyle = '#0f1114';
-    ctx.fillRect(0, 230, 512, 52);
-    ctx.fillStyle = '#3a414d';
-    ctx.fillRect(0, 252, 512, 8);
+    // Rust oxidation streaks
+    ctx.fillStyle = 'rgba(105, 42, 18, 0.4)';
+    ctx.fillRect(40, 0, 60, 240);
+    ctx.fillRect(280, 140, 90, 372);
+
+    // Heavy cross structural I-Beams (Horizontal & Vertical)
+    ctx.fillStyle = '#0f1115';
+    ctx.fillRect(0, 236, 512, 40);
+    ctx.fillStyle = '#323942';
+    ctx.fillRect(0, 254, 512, 4); // I-beam web ridge
+
+    // Rivet studs along I-beam flanges
+    for (let rx = 16; rx < 512; rx += 32) {
+      ctx.fillStyle = '#090a0d';
+      ctx.beginPath();
+      ctx.arc(rx, 242, 3, 0, Math.PI * 2);
+      ctx.arc(rx, 270, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#55606e';
+      ctx.beginPath();
+      ctx.arc(rx - 1, 241, 1.5, 0, Math.PI * 2);
+      ctx.arc(rx - 1, 269, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  // Level 4 Prop: High-Contrast Analog Boiler Steam Pressure Gauge Dial
+  static createPressureGaugeTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+
+    // Outer brass casing rim
+    ctx.fillStyle = '#5c4a28';
+    ctx.beginPath();
+    ctx.arc(128, 128, 124, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#8a7242';
+    ctx.beginPath();
+    ctx.arc(128, 128, 118, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dark inset bezel shadow
+    ctx.fillStyle = '#1c170d';
+    ctx.beginPath();
+    ctx.arc(128, 128, 110, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Aged off-white dial face
+    ctx.fillStyle = '#e8e2d2';
+    ctx.beginPath();
+    ctx.arc(128, 128, 104, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Red critical pressure hazard zone arc (from 80 to 120 PSI, ~30 to 90 deg)
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(128, 128, 86, 0.25 * Math.PI, 0.75 * Math.PI);
+    ctx.stroke();
+
+    // Scale graduation ticks & numbers
+    ctx.strokeStyle = '#1a1814';
+    ctx.fillStyle = '#1a1814';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const numTicks = 24;
+    for (let i = 0; i <= numTicks; i++) {
+      const angle = Math.PI * 0.75 + (i / numTicks) * Math.PI * 1.5;
+      const isMajor = i % 4 === 0;
+      const rInner = isMajor ? 78 : 84;
+      const rOuter = 92;
+
+      ctx.lineWidth = isMajor ? 3 : 1.5;
+      ctx.beginPath();
+      ctx.moveTo(128 + Math.cos(angle) * rInner, 128 + Math.sin(angle) * rInner);
+      ctx.lineTo(128 + Math.cos(angle) * rOuter, 128 + Math.sin(angle) * rOuter);
+      ctx.stroke();
+
+      if (isMajor) {
+        const val = i * 15;
+        const rText = 66;
+        ctx.fillText(`${val}`, 128 + Math.cos(angle) * rText, 128 + Math.sin(angle) * rText);
+      }
+    }
+
+    // Gauge center label
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText('STEAM PSI', 128, 158);
+    ctx.font = '7px monospace';
+    ctx.fillStyle = '#7a2218';
+    ctx.fillText('MAX 350', 128, 172);
+
+    // Center brass pivot stud
+    ctx.fillStyle = '#3a2e18';
+    ctx.beginPath();
+    ctx.arc(128, 128, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#8a7242';
+    ctx.beginPath();
+    ctx.arc(128, 128, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
     return tex;
   }
 

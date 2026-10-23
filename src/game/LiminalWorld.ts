@@ -77,7 +77,15 @@ export class LiminalWorld {
   private archiveTraversedRooms: number = 0;
   private lastArchiveRoomKey: string = '';
 
-  // Level 4 Machine Sub-Core dynamic steam fog state
+  // Level 4 Machine Sub-Core dynamic steam fog state & mechanical animation pool
+  private machineAnimatedObjects: {
+    type: 'fan' | 'needle' | 'steam' | 'halo';
+    obj: THREE.Object3D;
+    basePos?: THREE.Vector3;
+    speed?: number;
+    phase?: number;
+    baseScale?: number;
+  }[] = [];
   private steamHissTimer: number = 0;
   private currentLabyrinth: GeneratedLabyrinth | null = null;
 
@@ -109,6 +117,7 @@ export class LiminalWorld {
     corrugatedCeiling: THREE.CanvasTexture;
     archiveStack: THREE.CanvasTexture;
     filingCabinet: THREE.CanvasTexture;
+    pressureGauge: THREE.CanvasTexture;
     dreamGrass: THREE.CanvasTexture;
     checkeredDream: THREE.CanvasTexture;
     realisticSky: THREE.CanvasTexture;
@@ -149,6 +158,7 @@ export class LiminalWorld {
       corrugatedCeiling: TextureGenerator.createCorrugatedCeilingTexture(),
       archiveStack: TextureGenerator.createArchiveStackTexture(),
       filingCabinet: TextureGenerator.createFilingCabinetTexture(),
+      pressureGauge: TextureGenerator.createPressureGaugeTexture(),
       dreamGrass: TextureGenerator.createDreamcoreGrassTexture(),
       checkeredDream: TextureGenerator.createCheckeredDreamTexture(),
       realisticSky: TextureGenerator.createRealisticSkyTexture(),
@@ -273,6 +283,7 @@ export class LiminalWorld {
     this.archiveAnomalyNodes = [];
     this.archiveTraversedRooms = 0;
     this.lastArchiveRoomKey = '';
+    this.machineAnimatedObjects = [];
 
     for (let i = 0; i < this.waterRipples.length; i++) {
       this.waterRipples[i].active = false;
@@ -325,9 +336,9 @@ export class LiminalWorld {
       this.scene.background = new THREE.Color(0x110905);
       this.scene.fog = new THREE.FogExp2(0x110905, 0.075);
     } else if (labyrinth.level === 4) {
-      // Level 4: Machine Core & Boiler (Ominous crimson industrial steam fog)
-      this.scene.background = new THREE.Color(0x180503);
-      this.scene.fog = new THREE.FogExp2(0x180503, 0.080);
+      // Level 4: Machine Core & Boiler (Cold industrial slate & amber steam fog)
+      this.scene.background = new THREE.Color(0x0e1114);
+      this.scene.fog = new THREE.FogExp2(0x0e1114, 0.075);
     } else {
       // Level 1: Yellow Halls (Oppressive, warm mustard liminal Backrooms fog)
       this.scene.background = new THREE.Color(0x161306);
@@ -343,6 +354,10 @@ export class LiminalWorld {
       this.textures.archiveWall.repeat.set(2, 1);
       this.textures.hotelCarpet.repeat.set(1, 1);
       this.textures.cofferedCeiling.repeat.set(2, 2);
+    } else if (labyrinth.level === 4) {
+      this.textures.hazardWall.repeat.set(2, 1);
+      this.textures.industrialFloor.repeat.set(2, 2);
+      this.textures.corrugatedCeiling.repeat.set(2, 2);
     }
 
     // ponytail: shared material pool across all rooms avoids allocating hundreds of identical shaders
@@ -362,9 +377,17 @@ export class LiminalWorld {
         brass: new THREE.MeshStandardMaterial({ color: 0x8a703a, metalness: 0.85, roughness: 0.25 }),
       },
       sublevel_red: {
-        wall: new THREE.MeshStandardMaterial({ map: this.textures.hazardWall, roughness: 0.4, metalness: 0.5 }),
-        floor: new THREE.MeshStandardMaterial({ map: this.textures.industrialFloor, roughness: 0.5, metalness: 0.7 }),
-        ceiling: new THREE.MeshStandardMaterial({ map: this.textures.corrugatedCeiling, roughness: 0.7, metalness: 0.6 }),
+        wall: new THREE.MeshStandardMaterial({ map: this.textures.hazardWall, roughness: 0.45, metalness: 0.6 }),
+        floor: new THREE.MeshStandardMaterial({ map: this.textures.industrialFloor, roughness: 0.4, metalness: 0.75 }),
+        ceiling: new THREE.MeshStandardMaterial({ map: this.textures.corrugatedCeiling, roughness: 0.65, metalness: 0.55 }),
+        pipe: new THREE.MeshStandardMaterial({ color: 0x242a32, metalness: 0.85, roughness: 0.25 }),
+        pipeFlange: new THREE.MeshStandardMaterial({ color: 0x14181c, metalness: 0.9, roughness: 0.3 }),
+        valve: new THREE.MeshStandardMaterial({ color: 0x8a2418, metalness: 0.65, roughness: 0.35 }),
+        boiler: new THREE.MeshStandardMaterial({ color: 0x1c2128, metalness: 0.88, roughness: 0.3 }),
+        firebox: new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff2200, emissiveIntensity: 2.8 }),
+        gaugeFace: new THREE.MeshBasicMaterial({ map: this.textures.pressureGauge }),
+        gaugeNeedle: new THREE.MeshBasicMaterial({ color: 0x111111 }),
+        fanBlade: new THREE.MeshStandardMaterial({ color: 0x161a1e, metalness: 0.9, roughness: 0.3 }),
       },
       mono_yellow: {
         wall: new THREE.MeshStandardMaterial({ map: this.textures.yellowWall, roughness: 0.75 }),
@@ -623,14 +646,18 @@ export class LiminalWorld {
 
       // Level 4: Machine Sub-level Overhead Industrial Steam Pipes & Heavy Boiler
       if (room.biome === 'sublevel_red') {
-        const pipeMat = new THREE.MeshStandardMaterial({ color: 0x3d170f, metalness: 0.8, roughness: 0.3 });
-        const pipeGeo = new THREE.CylinderGeometry(0.18, 0.18, this.roomSize, 8);
-        const pipe = new THREE.Mesh(pipeGeo, pipeMat);
-        pipe.rotation.z = Math.PI / 2;
-        pipe.position.set(rx, this.roomHeight - 0.45, rz - 1.5);
-        roomGroup.add(pipe);
+        const pipeMat = sharedMaterials.sublevel_red.pipe;
+        const flangeMat = sharedMaterials.sublevel_red.pipeFlange;
+        const valveMat = sharedMaterials.sublevel_red.valve;
 
-        const pipe2 = pipe.clone();
+        // Long main steam pipes
+        const pipeGeo = new THREE.CylinderGeometry(0.18, 0.18, this.roomSize, 8);
+        const pipe1 = new THREE.Mesh(pipeGeo, pipeMat);
+        pipe1.rotation.z = Math.PI / 2;
+        pipe1.position.set(rx, this.roomHeight - 0.45, rz - 1.5);
+        roomGroup.add(pipe1);
+
+        const pipe2 = pipe1.clone();
         pipe2.position.set(rx, this.roomHeight - 0.45, rz + 1.5);
         roomGroup.add(pipe2);
 
@@ -640,43 +667,121 @@ export class LiminalWorld {
         pipeCross.position.set(rx, this.roomHeight - 0.65, rz);
         roomGroup.add(pipeCross);
 
-        // Industrial Steam Vent Nozzle & Localized Hot Steam Plume
+        // Bolted pipe flange rings at pipe intersections
+        [-1.5, 1.5].forEach((pz) => {
+          const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.08, 12), flangeMat);
+          flange.rotation.x = Math.PI / 2;
+          flange.position.set(rx, this.roomHeight - 0.65, rz + pz);
+          roomGroup.add(flange);
+        });
+
+        // Cast iron four-spoke valve wheel on cross pipe
+        const valveWheel = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.035, 8, 16), valveMat);
+        valveWheel.rotation.y = Math.PI / 2;
+        valveWheel.position.set(rx + 0.18, this.roomHeight - 0.65, rz);
+        roomGroup.add(valveWheel);
+
+        // Industrial Steam Vent Nozzle, Exhaust Fan & Multi-Layer Drifting Steam Cluster
         if (room.hasSteamVent) {
           const ventNozzle = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.25, 0.35, 0.4, 8),
-            new THREE.MeshStandardMaterial({ color: 0x241614, metalness: 0.9, roughness: 0.2 })
+            new THREE.CylinderGeometry(0.26, 0.38, 0.35, 12),
+            flangeMat
           );
-          ventNozzle.position.set(rx, this.roomHeight - 0.75, rz);
+          ventNozzle.position.set(rx, this.roomHeight - 0.72, rz);
           roomGroup.add(ventNozzle);
 
+          // Ceiling exhaust vent turbine fan
+          const fanGroup = new THREE.Group();
+          const bladeGeo = new THREE.BoxGeometry(0.38, 0.02, 0.1);
+          for (let b = 0; b < 4; b++) {
+            const blade = new THREE.Mesh(bladeGeo, sharedMaterials.sublevel_red.fanBlade);
+            blade.rotation.y = (b * Math.PI) / 2;
+            blade.rotation.z = 0.25; // angled blade
+            fanGroup.add(blade);
+          }
+          fanGroup.position.set(rx, this.roomHeight - 0.15, rz);
+          roomGroup.add(fanGroup);
+          this.machineAnimatedObjects.push({ type: 'fan', obj: fanGroup, speed: 1.8 });
+
+          // Multi-layer drifting steam cluster (soft additive volumetric illusion)
           const steamMat = new THREE.MeshBasicMaterial({
             map: this.textures.softGlow,
-            color: 0xff4433,
+            color: 0xd6c4b2, // Warm industrial steam condensation
             transparent: true,
-            opacity: 0.38,
+            opacity: 0.26,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
             side: THREE.DoubleSide,
           });
-          const steamPlume = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.6), steamMat);
-          steamPlume.position.set(rx, this.roomHeight - 1.5, rz);
-          roomGroup.add(steamPlume);
+
+          // Dual intersecting rotated steam quads
+          const steam1 = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.4), steamMat);
+          steam1.position.set(rx, this.roomHeight - 1.4, rz);
+          roomGroup.add(steam1);
+          this.machineAnimatedObjects.push({
+            type: 'steam',
+            obj: steam1,
+            basePos: steam1.position.clone(),
+            speed: 0.12,
+            phase: 0,
+          });
+
+          const steam2 = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 2.0), steamMat);
+          steam2.rotation.y = Math.PI / 2;
+          steam2.position.set(rx, this.roomHeight - 1.6, rz);
+          roomGroup.add(steam2);
+          this.machineAnimatedObjects.push({
+            type: 'steam',
+            obj: steam2,
+            basePos: steam2.position.clone(),
+            speed: -0.16,
+            phase: Math.PI * 0.5,
+          });
         }
 
         // Heavy industrial boiler drum in select rooms
-        if (Math.random() > 0.4) {
-          const boilerGeo = new THREE.CylinderGeometry(1.1, 1.1, 2.5, 12);
-          const boilerMat = new THREE.MeshStandardMaterial({ color: 0x1f1a18, metalness: 0.85, roughness: 0.3 });
-          const boiler = new THREE.Mesh(boilerGeo, boilerMat);
-          boiler.position.set(rx - 2.8, 1.25, rz - 2.8);
-          roomGroup.add(boiler);
-          this.wallColliders.push(new THREE.Box3().setFromObject(boiler));
+        if (Math.random() > 0.35) {
+          const boilerGroup = new THREE.Group();
+          const boilerGeo = new THREE.CylinderGeometry(1.15, 1.15, 2.6, 16);
+          const boiler = new THREE.Mesh(boilerGeo, sharedMaterials.sublevel_red.boiler);
+          boilerGroup.add(boiler);
 
-          // Glowing red firebox grate at bottom of boiler
-          const fireMat = new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff2200, emissiveIntensity: 2.8 });
-          const fireGrate = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.2), fireMat);
-          fireGrate.position.set(rx - 2.8, 0.3, rz - 1.8);
-          roomGroup.add(fireGrate);
+          // Access hatch plate on side
+          const hatch = new THREE.Mesh(
+            new THREE.CircleGeometry(0.35, 12),
+            sharedMaterials.sublevel_red.pipeFlange
+          );
+          hatch.position.set(0, 0.4, 1.16);
+          boilerGroup.add(hatch);
+
+          // Analog steam pressure gauge dial
+          const gaugeFace = new THREE.Mesh(
+            new THREE.CircleGeometry(0.22, 16),
+            sharedMaterials.sublevel_red.gaugeFace
+          );
+          gaugeFace.position.set(0, 0.9, 1.16);
+          boilerGroup.add(gaugeFace);
+
+          // Needle indicator pivoted at gauge center
+          const needle = new THREE.Mesh(
+            new THREE.BoxGeometry(0.012, 0.14, 0.01),
+            sharedMaterials.sublevel_red.gaugeNeedle
+          );
+          needle.position.set(0, 0.9 + 0.05, 1.17);
+          boilerGroup.add(needle);
+          this.machineAnimatedObjects.push({ type: 'needle', obj: needle, phase: Math.random() * 10 });
+
+          // Glowing firebox grate at bottom
+          const fireGrate = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, 0.3), sharedMaterials.sublevel_red.firebox);
+          fireGrate.position.set(0, -0.9, 1.05);
+          boilerGroup.add(fireGrate);
+
+          boilerGroup.position.set(rx - 2.8, 1.3, rz - 2.8);
+          roomGroup.add(boilerGroup);
+
+          const bBox = new THREE.Box3().setFromObject(boilerGroup);
+          this.wallColliders.push(bBox);
+          this.registerCollider(bBox, rKey);
         }
       }
 
@@ -748,15 +853,29 @@ export class LiminalWorld {
           }
         });
       } else if (room.biome === 'sublevel_red') {
-        // Dual industrial hazard beacon lamps & gauge indicators
+        // Dual industrial hazard beacon lamps with atmospheric fog diffusion halos
         const lampMat = new THREE.MeshStandardMaterial({
-          color: 0xff1100,
+          color: 0xff3311,
           emissive: 0xff2200,
           emissiveIntensity: 3.5,
         });
         const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.28, 0.14), lampMat);
         lamp.position.set(rx + half - 0.12, 2.3, rz);
         roomGroup.add(lamp);
+
+        // Soft radial light diffusion halo through steam fog
+        const haloMatRed = new THREE.MeshBasicMaterial({
+          map: this.textures.softGlow,
+          color: 0xff3311,
+          transparent: true,
+          opacity: 0.22,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const halo1 = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), haloMatRed);
+        halo1.position.set(rx + half - 0.22, 2.3, rz);
+        halo1.rotation.y = -Math.PI / 2;
+        roomGroup.add(halo1);
 
         // Secondary amber warning beacon
         const amberBeacon = new THREE.Mesh(
@@ -765,6 +884,19 @@ export class LiminalWorld {
         );
         amberBeacon.position.set(rx - half + 0.18, 1.8, rz - 2.0);
         roomGroup.add(amberBeacon);
+
+        const haloMatAmber = new THREE.MeshBasicMaterial({
+          map: this.textures.softGlow,
+          color: 0xf59e0b,
+          transparent: true,
+          opacity: 0.18,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const halo2 = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), haloMatAmber);
+        halo2.position.set(rx - half + 0.28, 1.8, rz - 2.0);
+        halo2.rotation.y = Math.PI / 2;
+        roomGroup.add(halo2);
       } else {
         // Yellow Halls: Pure classic Backrooms walls (Zero sci-fi LEDs or modern indicator lights)
         if (Math.random() > 0.88) {
@@ -1905,6 +2037,8 @@ export class LiminalWorld {
   }
 
   public update(delta: number) {
+    const timeSec = performance.now() * 0.001;
+
     // Battery drain (Level 0 Sanctuary has infinite battery / safe zone)
     if (this.currentLevel === 0) {
       this.batteryLevel = 100;
@@ -1940,7 +2074,6 @@ export class LiminalWorld {
 
     // Level 2 Sublimity Poolrooms: Update GLSL water wave harmonics, ripples & floor caustics
     if (this.currentLevel === 2) {
-      const timeSec = performance.now() * 0.001;
       this.poolWaterController.updateTime(timeSec);
 
       // Multi-layer procedural caustic drift on submerged tile floor
@@ -1976,7 +2109,6 @@ export class LiminalWorld {
 
       // Loop phase threshold (every 6 room transitions)
       const loopPhase = Math.floor(this.archiveTraversedRooms / 6);
-      const timeSec = performance.now() * 0.001;
 
       for (let i = 0; i < this.archiveAnomalyNodes.length; i++) {
         const node = this.archiveAnomalyNodes[i];
@@ -2008,13 +2140,32 @@ export class LiminalWorld {
       }
     }
 
-    // Level 4 Machine Sub-Core: Dynamic localized steam fog density & hiss
+    // Level 4 Machine Sub-Core: Dynamic localized steam fog density, mechanical animation & hiss
     if (this.currentLevel === 4 && this.currentLabyrinth && this.scene.fog instanceof THREE.FogExp2) {
       const rx = Math.round(this.camera.position.x / this.roomSize);
       const rz = Math.round(this.camera.position.z / this.roomSize);
       const room = this.currentLabyrinth.rooms.find((r) => r.x === rx && r.z === rz);
-      const targetDensity = room?.steamDensity ?? 0.080;
-      this.scene.fog.density = THREE.MathUtils.lerp(this.scene.fog.density, targetDensity, delta * 1.5);
+      const targetDensity = room?.steamDensity ?? 0.075;
+      // Gentle harmonic breathing in fog density without jarring visibility pops
+      const densityBreath = Math.sin(timeSec * 0.5) * 0.0025;
+      this.scene.fog.density = THREE.MathUtils.lerp(this.scene.fog.density, targetDensity + densityBreath, delta * 1.4);
+
+      // Animate mechanical objects (exhaust turbines, pressure needles, multi-layer steam plumes)
+      for (let i = 0; i < this.machineAnimatedObjects.length; i++) {
+        const item = this.machineAnimatedObjects[i];
+        if (item.type === 'fan') {
+          item.obj.rotation.y += delta * (item.speed ?? 1.8);
+        } else if (item.type === 'needle') {
+          const ph = item.phase ?? 0;
+          item.obj.rotation.z = Math.sin(timeSec * 3.8 + ph) * 0.045 + Math.sin(timeSec * 11.2 + ph) * 0.018;
+        } else if (item.type === 'steam' && item.basePos) {
+          const ph = item.phase ?? 0;
+          item.obj.rotation.z += delta * (item.speed ?? 0.12);
+          item.obj.position.y = item.basePos.y + Math.sin(timeSec * 0.9 + ph) * 0.06;
+          const scale = 1.0 + Math.sin(timeSec * 0.7 + ph) * 0.08;
+          item.obj.scale.set(scale, scale, 1);
+        }
+      }
 
       if (room?.hasSteamVent) {
         this.steamHissTimer -= delta;
@@ -2024,8 +2175,6 @@ export class LiminalWorld {
         }
       }
     }
-
-    const timeSec = performance.now() * 0.001;
 
     // Floating monolith rotation, cloud drift, motes sway & balloon bob in Dreamcore (direct array, zero scene traversal)
     if (this.currentLevel === 0 && this.dreamAnimatedObjects.length > 0) {

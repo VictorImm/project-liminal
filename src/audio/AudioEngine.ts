@@ -260,7 +260,7 @@ class AudioEngineClass {
         if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.12, now, 0.4);
       } else if (level === 4) {
         // Level 4: Machine Sub-level & Boiler (Heavy mechanical boiler rumble & hum)
-        if (this.humGain) this.humGain.gain.setTargetAtTime(0.05, now, 0.4);
+        if (this.humGain) this.humGain.gain.setTargetAtTime(0.06, now, 0.4);
         if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.18, now, 0.4);
       } else {
         // Level 1: The Yellow Halls (Authentic 60Hz fluorescent buzz & dry liminal drone)
