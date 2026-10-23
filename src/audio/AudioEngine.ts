@@ -256,8 +256,8 @@ class AudioEngineClass {
         if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.08, now, 0.4);
       } else if (level === 3) {
         // Level 3: Endless Archive & Hotel (Muffled antique silence, deep hollow stillness)
-        if (this.humGain) this.humGain.gain.setTargetAtTime(0.008, now, 0.4);
-        if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.10, now, 0.4);
+        if (this.humGain) this.humGain.gain.setTargetAtTime(0.005, now, 0.4);
+        if (this.ambientGain) this.ambientGain.gain.setTargetAtTime(0.12, now, 0.4);
       } else if (level === 4) {
         // Level 4: Machine Sub-level & Boiler (Heavy mechanical boiler rumble & hum)
         if (this.humGain) this.humGain.gain.setTargetAtTime(0.05, now, 0.4);

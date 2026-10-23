@@ -307,34 +307,98 @@ export class TextureGenerator {
     return texture;
   }
 
-  // Level 3: Archive Mahogany Wood Paneling Wall
+  // Level 3: Archive Institutional Walnut Wainscoting & Aged Olive Plaster Wall
   static createArchiveWallTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    // Rich dark mahogany wood
-    ctx.fillStyle = '#2b1810';
-    ctx.fillRect(0, 0, 512, 512);
+    // Upper 55%: Aged institutional olive/sage plaster (y: 0 to 276)
+    ctx.fillStyle = '#242a22';
+    ctx.fillRect(0, 0, 512, 276);
 
-    // Wood grain planks
-    for (let x = 0; x < 512; x += 64) {
-      ctx.fillStyle = x % 128 === 0 ? '#382015' : '#23130c';
-      ctx.fillRect(x + 2, 0, 60, 512);
-      ctx.strokeStyle = '#140a06';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(x + 4, 32, 56, 448);
+    // Subtle plaster mottling
+    for (let i = 0; i < 400; i++) {
+      const px = Math.random() * 512;
+      const py = Math.random() * 276;
+      const r = 4 + Math.random() * 14;
+      ctx.fillStyle = Math.random() > 0.5 ? 'rgba(42, 50, 39, 0.22)' : 'rgba(26, 32, 24, 0.25)';
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // Vintage damask wallpaper strip on upper half
-    ctx.fillStyle = 'rgba(60, 40, 25, 0.4)';
-    for (let y = 0; y < 256; y += 32) {
-      for (let x = 0; x < 512; x += 32) {
+    // Water stain seepage running down from ceiling
+    ctx.fillStyle = 'rgba(16, 12, 8, 0.28)';
+    ctx.fillRect(80, 0, 48, 190);
+    ctx.fillRect(290, 0, 70, 240);
+    ctx.fillRect(410, 0, 32, 140);
+
+    // Hairline settlement cracks in plaster
+    ctx.strokeStyle = 'rgba(12, 15, 11, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(120, 40);
+    ctx.lineTo(145, 95);
+    ctx.lineTo(135, 150);
+    ctx.lineTo(160, 210);
+    ctx.stroke();
+
+    // Faint stenciled departmental archive classification markings
+    ctx.font = 'bold 13px monospace';
+    ctx.fillStyle = 'rgba(80, 95, 75, 0.32)';
+    ctx.fillText('SEC-B // RECORD DEPOSITORY 03', 28, 65);
+    ctx.fillText('CLASS-IV RESTRICTED ARCHIVE', 28, 85);
+
+    // Chair rail trim (y: 276 to 292): Weathered brass & dark timber rail
+    ctx.fillStyle = '#5a462b';
+    ctx.fillRect(0, 276, 512, 16);
+    ctx.fillStyle = '#836b44';
+    ctx.fillRect(0, 276, 512, 3); // Upper highlight
+    ctx.fillStyle = '#261c10';
+    ctx.fillRect(0, 290, 512, 2); // Lower drop shadow
+
+    // Brass screw studs on chair rail
+    for (let x = 32; x < 512; x += 64) {
+      ctx.fillStyle = '#1c150c';
+      ctx.beginPath();
+      ctx.arc(x, 284, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#9c8153';
+      ctx.beginPath();
+      ctx.arc(x, 283, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Lower 45%: Heavy dark walnut wainscoting (y: 292 to 512)
+    ctx.fillStyle = '#1c120a';
+    ctx.fillRect(0, 292, 512, 220);
+
+    // Vertical walnut planks and beveled moldings
+    for (let x = 0; x < 512; x += 64) {
+      // Plank tone variation
+      ctx.fillStyle = x % 128 === 0 ? '#24170e' : '#191008';
+      ctx.fillRect(x + 2, 292, 60, 220);
+
+      // Vertical wood grain lines
+      ctx.strokeStyle = 'rgba(10, 6, 3, 0.4)';
+      ctx.lineWidth = 1;
+      for (let gx = x + 8; gx < x + 56; gx += 10) {
         ctx.beginPath();
-        ctx.arc(x + 16, y + 16, 8, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(gx, 292);
+        ctx.lineTo(gx + (Math.sin(gx) * 4), 512);
+        ctx.stroke();
       }
+
+      // Recessed beveled panel molding
+      ctx.strokeStyle = '#0e0804';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x + 6, 306, 52, 188);
+
+      ctx.strokeStyle = 'rgba(75, 50, 30, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 7, 307, 50, 186);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -343,30 +407,61 @@ export class TextureGenerator {
     return texture;
   }
 
-  // Level 3: Burgundy Patterned Hotel Carpet
+  // Level 3: Institutional Archive Corridor Runner Carpet
   static createHotelCarpetTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
 
-    // Deep burgundy
-    ctx.fillStyle = '#380d12';
-    ctx.fillRect(0, 0, 256, 256);
+    // Outer borders: Dark moss / charcoal loop pile (x: 0-64 and 448-512)
+    ctx.fillStyle = '#141a14';
+    ctx.fillRect(0, 0, 512, 512);
 
-    // Geometric diamond hotel runner pattern
-    ctx.strokeStyle = '#631820';
-    ctx.lineWidth = 3;
-    for (let x = 0; x <= 256; x += 64) {
-      for (let y = 0; y <= 256; y += 64) {
+    // Inner corridor runner (x: 64 to 448)
+    ctx.fillStyle = '#221e17';
+    ctx.fillRect(64, 0, 384, 512);
+
+    // Runner border pinstripes
+    ctx.strokeStyle = '#52432a';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(66, 0, 380, 512);
+    ctx.strokeStyle = '#382e1d';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(74, 0, 364, 512);
+
+    // Muted geometric diamond runner motif
+    ctx.strokeStyle = '#3a3224';
+    ctx.lineWidth = 2.5;
+    const diamondSize = 64;
+    for (let x = 80; x < 432; x += diamondSize) {
+      for (let y = 0; y <= 512; y += diamondSize) {
         ctx.beginPath();
-        ctx.moveTo(x + 32, y);
-        ctx.lineTo(x + 64, y + 32);
-        ctx.lineTo(x + 32, y + 64);
-        ctx.lineTo(x, y + 32);
+        ctx.moveTo(x + diamondSize / 2, y);
+        ctx.lineTo(x + diamondSize, y + diamondSize / 2);
+        ctx.lineTo(x + diamondSize / 2, y + diamondSize);
+        ctx.lineTo(x, y + diamondSize / 2);
         ctx.closePath();
         ctx.stroke();
+
+        // Inner rosette dot
+        ctx.fillStyle = '#483d2b';
+        ctx.beginPath();
+        ctx.arc(x + diamondSize / 2, y + diamondSize / 2, 4, 0, Math.PI * 2);
+        ctx.fill();
       }
+    }
+
+    // Center traffic wear path (dusty grey-beige faded pile along x: 210 to 302)
+    ctx.fillStyle = 'rgba(165, 155, 135, 0.09)';
+    ctx.fillRect(200, 0, 112, 512);
+
+    // Dense organic carpet stippling
+    for (let i = 0; i < 600; i++) {
+      const rx = 64 + Math.random() * 384;
+      const ry = Math.random() * 512;
+      ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.06)';
+      ctx.fillRect(rx, ry, 2, 2);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -595,7 +690,7 @@ export class TextureGenerator {
     return tex;
   }
 
-  // Level 3 Ceiling: Dark Oak Coffered Ceiling with Heavy Beams
+  // Level 3 Ceiling: Dark Oak Coffered Ceiling with Acoustic Soundproofing Insets
   static createCofferedCeilingTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
@@ -603,34 +698,243 @@ export class TextureGenerator {
     const ctx = canvas.getContext('2d')!;
 
     // Recessed deep wood panel
-    ctx.fillStyle = '#1c100a';
+    ctx.fillStyle = '#180e08';
     ctx.fillRect(0, 0, 512, 512);
 
     // Coffered boxes
     const boxSize = 256;
     for (let bx = 0; bx < 512; bx += boxSize) {
       for (let by = 0; by < 512; by += boxSize) {
-        // Inner depression
-        ctx.fillStyle = '#120a06';
-        ctx.fillRect(bx + 24, by + 24, boxSize - 48, boxSize - 48);
+        // Inner depression: Acoustic sound-dampening fibrous archive tile
+        ctx.fillStyle = '#100905';
+        ctx.fillRect(bx + 20, by + 20, boxSize - 40, boxSize - 40);
+
+        // Acoustic pinhole perforation grid
+        ctx.fillStyle = '#070402';
+        for (let hx = bx + 36; hx < bx + boxSize - 36; hx += 16) {
+          for (let hy = by + 36; hy < by + boxSize - 36; hy += 16) {
+            ctx.beginPath();
+            ctx.arc(hx, hy, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
 
         // Stepped molding
-        ctx.strokeStyle = '#311a10';
-        ctx.lineWidth = 12;
-        ctx.strokeRect(bx + 18, by + 18, boxSize - 36, boxSize - 36);
+        ctx.strokeStyle = '#2d180e';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(bx + 16, by + 16, boxSize - 32, boxSize - 32);
 
-        // Center rosette
-        ctx.fillStyle = '#4a291a';
-        ctx.beginPath();
-        ctx.arc(bx + boxSize / 2, by + boxSize / 2, 16, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.strokeStyle = '#3e2215';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bx + 12, by + 12, boxSize - 24, boxSize - 24);
       }
     }
 
     // Heavy main beams
-    ctx.fillStyle = '#26140c';
+    ctx.fillStyle = '#221109';
     ctx.fillRect(244, 0, 24, 512);
     ctx.fillRect(0, 244, 512, 24);
+
+    // Beam highlight seams
+    ctx.fillStyle = '#3a2013';
+    ctx.fillRect(244, 0, 2, 512);
+    ctx.fillRect(0, 244, 512, 2);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  // Level 3 Prop: Multi-Tier Archive Shelving with Document Boxes & Ledgers
+  static createArchiveStackTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    // Dark shelving background shadow
+    ctx.fillStyle = '#0a0d0b';
+    ctx.fillRect(0, 0, 512, 512);
+
+    const shelfHeight = 128;
+
+    // 4 horizontal tiers
+    for (let tier = 0; tier < 4; tier++) {
+      const topY = tier * shelfHeight;
+      const shelfY = topY + shelfHeight - 12;
+
+      // Draw shelf contents (Books, Hollinger boxes, file bundles)
+      if (tier === 0) {
+        // Tier 0: Hollinger beige document boxes with white spine labels
+        for (let x = 12; x < 490; x += 38) {
+          if (x > 320 && x < 390) continue; // Gap where box was checked out decades ago
+          const shade = Math.floor(Math.random() * 20) - 10;
+          ctx.fillStyle = `rgb(${165 + shade}, ${155 + shade}, ${130 + shade})`;
+          ctx.fillRect(x, topY + 16, 34, shelfHeight - 30);
+
+          // White spine label with black code
+          ctx.fillStyle = '#f0ece1';
+          ctx.fillRect(x + 4, topY + 32, 26, 44);
+
+          ctx.fillStyle = '#222';
+          ctx.fillRect(x + 8, topY + 40, 18, 3);
+          ctx.fillRect(x + 8, topY + 48, 14, 3);
+          ctx.fillRect(x + 8, topY + 56, 16, 2);
+
+          // Metal pull hole
+          ctx.fillStyle = '#3a3224';
+          ctx.beginPath();
+          ctx.arc(x + 17, topY + 92, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (tier === 1) {
+        // Tier 1: Heavy buckram-bound legal ledgers with gold foil spine bands
+        let curX = 14;
+        while (curX < 490) {
+          const w = 18 + Math.floor(Math.random() * 16);
+          const colRoll = Math.random();
+          // Buckram colors: faded oxblood, institutional drab green, dark slate
+          ctx.fillStyle = colRoll < 0.4 ? '#4a1c1d' : colRoll < 0.75 ? '#243426' : '#1d2224';
+          ctx.fillRect(curX, topY + 12, w - 2, shelfHeight - 26);
+
+          // Gold spine bands
+          ctx.fillStyle = 'rgba(215, 180, 110, 0.7)';
+          ctx.fillRect(curX, topY + 28, w - 2, 3);
+          ctx.fillRect(curX, topY + 34, w - 2, 2);
+          ctx.fillRect(curX, topY + 95, w - 2, 3);
+
+          curX += w;
+        }
+      } else if (tier === 2) {
+        // Tier 2: Manila document folders bundled with archival tape & legal dossiers
+        let curX = 10;
+        while (curX < 490) {
+          const bundleW = 32 + Math.floor(Math.random() * 24);
+          if (curX > 180 && curX < 240) {
+            curX += 60; // Shelf void
+            continue;
+          }
+          ctx.fillStyle = '#c5ba9a';
+          ctx.fillRect(curX, topY + 20, bundleW - 4, shelfHeight - 34);
+
+          // Archival black cotton tying strap
+          ctx.fillStyle = '#221e1a';
+          ctx.fillRect(curX, topY + 55, bundleW - 4, 4);
+
+          // Manila tabs
+          ctx.fillStyle = '#d4c9aa';
+          ctx.fillRect(curX + 4, topY + 14, 14, 8);
+
+          curX += bundleW;
+        }
+      } else {
+        // Tier 3: Oversized catalog folios & classified archive registers
+        for (let x = 16; x < 480; x += 44) {
+          ctx.fillStyle = '#2a2018';
+          ctx.fillRect(x, topY + 8, 38, shelfHeight - 22);
+
+          // Red stamped mark
+          ctx.fillStyle = 'rgba(180, 40, 30, 0.6)';
+          ctx.fillRect(x + 6, topY + 45, 26, 12);
+        }
+      }
+
+      // Horizontal steel shelf beam with rivet studs
+      ctx.fillStyle = '#181f1b';
+      ctx.fillRect(0, shelfY, 512, 12);
+      ctx.fillStyle = '#2d3832';
+      ctx.fillRect(0, shelfY, 512, 2); // Lip highlight
+      ctx.fillStyle = '#0c100e';
+      ctx.fillRect(0, shelfY + 10, 512, 2); // Shadow
+
+      // Steel shelf brackets & rivets
+      for (let rx = 24; rx < 512; rx += 120) {
+        ctx.fillStyle = '#404f47';
+        ctx.beginPath();
+        ctx.arc(rx, shelfY + 6, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Vertical metal upright uprights on left & right
+    ctx.fillStyle = '#141816';
+    ctx.fillRect(0, 0, 10, 512);
+    ctx.fillRect(502, 0, 10, 512);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }
+
+  // Level 3 Prop: 4-Drawer Institutional Steel Filing Cabinet Front
+  static createFilingCabinetTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+
+    // Institutional dark olive-slate steel body
+    ctx.fillStyle = '#232924';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Cabinet outer frame border
+    ctx.strokeStyle = '#151916';
+    ctx.lineWidth = 12;
+    ctx.strokeRect(6, 6, 500, 500);
+
+    const drawerHeight = 122;
+
+    // 4 drawers
+    for (let i = 0; i < 4; i++) {
+      const dy = 12 + i * drawerHeight;
+
+      // Drawer panel face
+      ctx.fillStyle = i % 2 === 0 ? '#262d27' : '#222823';
+      ctx.fillRect(16, dy + 2, 480, drawerHeight - 6);
+
+      // Drawer face beveled border
+      ctx.strokeStyle = '#181d19';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(16, dy + 2, 480, drawerHeight - 6);
+      ctx.strokeStyle = 'rgba(70, 85, 75, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(18, dy + 4, 476, drawerHeight - 10);
+
+      // Center: Recessed Brass Card Label Holder
+      const cx = 256;
+      ctx.fillStyle = '#7a6438';
+      ctx.fillRect(cx - 50, dy + 28, 100, 36);
+      ctx.fillStyle = '#9e844f';
+      ctx.fillRect(cx - 48, dy + 30, 96, 2); // highlight
+      ctx.fillStyle = '#42341b';
+      ctx.fillRect(cx - 48, dy + 62, 96, 2); // shadow
+
+      // Off-white index card insert
+      ctx.fillStyle = '#ede8db';
+      ctx.fillRect(cx - 40, dy + 34, 80, 24);
+      // Index card classification text
+      ctx.fillStyle = '#222';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText(`REC // 0${i + 1}-A`, cx - 35, dy + 49);
+
+      // Center: Recessed Steel Pull Handle Cup
+      ctx.fillStyle = '#101411';
+      ctx.fillRect(cx - 44, dy + 74, 88, 20);
+      ctx.fillStyle = '#4b574f';
+      ctx.fillRect(cx - 40, dy + 76, 80, 5); // handle bar
+
+      // Keyhole cylinder on top drawer
+      if (i === 0) {
+        ctx.fillStyle = '#7a6438';
+        ctx.beginPath();
+        ctx.arc(440, dy + 45, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#100c06';
+        ctx.fillRect(439, dy + 41, 2, 9);
+      }
+    }
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;

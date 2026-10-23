@@ -62,6 +62,21 @@ export class LiminalWorld {
   // Level 2 Sublimity Water Ripple Mesh Pool & Custom Liminal GLSL Water Controller
   private poolWaterController: ReturnType<typeof createPoolWaterMaterial>;
   private waterRipples: { mesh: THREE.Mesh; life: number; maxLife: number; active: boolean }[] = [];
+
+  // Level 3 Endless Archives Loop Anomaly State
+  private archiveAnomalyNodes: {
+    roomKey: string;
+    roomCoord: [number, number];
+    cabinet?: THREE.Mesh;
+    shelf?: THREE.Mesh;
+    sconce?: THREE.Mesh;
+    portrait?: THREE.Mesh;
+    originalCabinetPos?: THREE.Vector3;
+    originalPortraitRot?: number;
+  }[] = [];
+  private archiveTraversedRooms: number = 0;
+  private lastArchiveRoomKey: string = '';
+
   // Level 4 Machine Sub-Core dynamic steam fog state
   private steamHissTimer: number = 0;
   private currentLabyrinth: GeneratedLabyrinth | null = null;
@@ -92,6 +107,8 @@ export class LiminalWorld {
     submergedPoolFloor: THREE.CanvasTexture;
     cofferedCeiling: THREE.CanvasTexture;
     corrugatedCeiling: THREE.CanvasTexture;
+    archiveStack: THREE.CanvasTexture;
+    filingCabinet: THREE.CanvasTexture;
     dreamGrass: THREE.CanvasTexture;
     checkeredDream: THREE.CanvasTexture;
     realisticSky: THREE.CanvasTexture;
@@ -130,6 +147,8 @@ export class LiminalWorld {
       submergedPoolFloor: TextureGenerator.createSubmergedPoolFloorTexture(),
       cofferedCeiling: TextureGenerator.createCofferedCeilingTexture(),
       corrugatedCeiling: TextureGenerator.createCorrugatedCeilingTexture(),
+      archiveStack: TextureGenerator.createArchiveStackTexture(),
+      filingCabinet: TextureGenerator.createFilingCabinetTexture(),
       dreamGrass: TextureGenerator.createDreamcoreGrassTexture(),
       checkeredDream: TextureGenerator.createCheckeredDreamTexture(),
       realisticSky: TextureGenerator.createRealisticSkyTexture(),
@@ -251,6 +270,9 @@ export class LiminalWorld {
     this.interactables = [];
     this.itemDataMap.clear();
     this.exitGateMesh = null;
+    this.archiveAnomalyNodes = [];
+    this.archiveTraversedRooms = 0;
+    this.lastArchiveRoomKey = '';
 
     for (let i = 0; i < this.waterRipples.length; i++) {
       this.waterRipples[i].active = false;
@@ -312,11 +334,15 @@ export class LiminalWorld {
       this.scene.fog = new THREE.FogExp2(0x161306, 0.068);
     }
 
-    // Set physically accurate texture tiling scales for Level 1
+    // Set physically accurate texture tiling scales per level
     if (labyrinth.level === 1) {
       this.textures.yellowWall.repeat.set(2, 1);
       this.textures.carpet.repeat.set(4, 4);
       this.textures.ceiling.repeat.set(4, 4);
+    } else if (labyrinth.level === 3) {
+      this.textures.archiveWall.repeat.set(2, 1);
+      this.textures.hotelCarpet.repeat.set(1, 1);
+      this.textures.cofferedCeiling.repeat.set(2, 2);
     }
 
     // ponytail: shared material pool across all rooms avoids allocating hundreds of identical shaders
@@ -327,9 +353,13 @@ export class LiminalWorld {
         ceiling: new THREE.MeshStandardMaterial({ map: this.textures.poolPlasterCeiling, roughness: 0.4 }),
       },
       archive: {
-        wall: new THREE.MeshStandardMaterial({ map: this.textures.archiveWall, roughness: 0.5 }),
-        floor: new THREE.MeshStandardMaterial({ map: this.textures.hotelCarpet, roughness: 0.85 }),
-        ceiling: new THREE.MeshStandardMaterial({ map: this.textures.cofferedCeiling, roughness: 0.6 }),
+        wall: new THREE.MeshStandardMaterial({ map: this.textures.archiveWall, roughness: 0.65 }),
+        floor: new THREE.MeshStandardMaterial({ map: this.textures.hotelCarpet, roughness: 0.88 }),
+        ceiling: new THREE.MeshStandardMaterial({ map: this.textures.cofferedCeiling, roughness: 0.75 }),
+        stack: new THREE.MeshStandardMaterial({ map: this.textures.archiveStack, roughness: 0.55 }),
+        cabinet: new THREE.MeshStandardMaterial({ map: this.textures.filingCabinet, roughness: 0.45, metalness: 0.35 }),
+        walnut: new THREE.MeshStandardMaterial({ color: 0x1a110a, roughness: 0.6 }),
+        brass: new THREE.MeshStandardMaterial({ color: 0x8a703a, metalness: 0.85, roughness: 0.25 }),
       },
       sublevel_red: {
         wall: new THREE.MeshStandardMaterial({ map: this.textures.hazardWall, roughness: 0.4, metalness: 0.5 }),
@@ -347,6 +377,7 @@ export class LiminalWorld {
     labyrinth.rooms.forEach((room) => {
       const rx = room.x * this.roomSize;
       const rz = room.z * this.roomSize;
+      const rKey = `${room.x},${room.z}`;
 
       // Create isolated Room Group for frustum & distance culling
       const roomGroup = new THREE.Group();
@@ -506,18 +537,88 @@ export class LiminalWorld {
         roomGroup.add(ladderRail2);
       }
 
-      // Level 3: Archive Mahogany Bookcases & Shelves on Opposing Walls
+      // Level 3: Archive Multi-Tier Shelving Stacks & Steel Filing Cabinets
       if (room.biome === 'archive') {
-        const shelfMat = new THREE.MeshStandardMaterial({ map: this.textures.archiveWall, roughness: 0.5 });
-        const shelf1 = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.8, 0.55), shelfMat);
-        shelf1.position.set(rx - 3.4, 1.4, rz);
-        roomGroup.add(shelf1);
-        this.wallColliders.push(new THREE.Box3().setFromObject(shelf1));
+        const aNode: {
+          roomKey: string;
+          roomCoord: [number, number];
+          cabinet?: THREE.Mesh;
+          shelf?: THREE.Mesh;
+          sconce?: THREE.Mesh;
+          portrait?: THREE.Mesh;
+          originalCabinetPos?: THREE.Vector3;
+          originalPortraitRot?: number;
+        } = {
+          roomKey: rKey,
+          roomCoord: [room.x, room.z],
+        };
 
-        const shelf2 = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.8, 0.55), shelfMat);
-        shelf2.position.set(rx + 3.4, 1.4, rz);
-        roomGroup.add(shelf2);
-        this.wallColliders.push(new THREE.Box3().setFromObject(shelf2));
+        // Multi-tier document storage stack 1 on West wall
+        const stackGeo = new THREE.BoxGeometry(0.7, 2.7, 2.8);
+        const stack1 = new THREE.Mesh(stackGeo, [
+          sharedMaterials.archive.stack,   // +X (faces room center)
+          sharedMaterials.archive.walnut,  // -X (against wall)
+          sharedMaterials.archive.walnut,  // +Y top
+          sharedMaterials.archive.walnut,  // -Y bottom
+          sharedMaterials.archive.stack,   // +Z
+          sharedMaterials.archive.stack,   // -Z
+        ]);
+        stack1.position.set(rx - 3.4, 1.35, rz - 0.8);
+        roomGroup.add(stack1);
+        const b1 = new THREE.Box3().setFromObject(stack1);
+        this.wallColliders.push(b1);
+        this.registerCollider(b1, rKey);
+        aNode.shelf = stack1;
+
+        // Multi-tier document storage stack 2 on East wall
+        const stack2 = new THREE.Mesh(stackGeo, [
+          sharedMaterials.archive.walnut,  // +X (against wall)
+          sharedMaterials.archive.stack,   // -X (faces room center)
+          sharedMaterials.archive.walnut,  // +Y top
+          sharedMaterials.archive.walnut,  // -Y bottom
+          sharedMaterials.archive.stack,   // +Z
+          sharedMaterials.archive.stack,   // -Z
+        ]);
+        stack2.position.set(rx + 3.4, 1.35, rz - 0.8);
+        roomGroup.add(stack2);
+        const b2 = new THREE.Box3().setFromObject(stack2);
+        this.wallColliders.push(b2);
+        this.registerCollider(b2, rKey);
+
+        // 4-Drawer Institutional Steel Filing Cabinet (paired on West wall alcove)
+        const cabGeo = new THREE.BoxGeometry(0.75, 1.35, 0.9);
+        const cab1 = new THREE.Mesh(cabGeo, [
+          sharedMaterials.archive.cabinet, // +X (drawer faces room)
+          sharedMaterials.archive.walnut,  // -X (wall)
+          sharedMaterials.archive.walnut,  // +Y top
+          sharedMaterials.archive.walnut,  // -Y bottom
+          sharedMaterials.archive.walnut,  // +Z
+          sharedMaterials.archive.walnut,  // -Z
+        ]);
+        cab1.position.set(rx - 3.35, 0.675, rz + 1.8);
+        roomGroup.add(cab1);
+        const b3 = new THREE.Box3().setFromObject(cab1);
+        this.wallColliders.push(b3);
+        this.registerCollider(b3, rKey);
+        aNode.cabinet = cab1;
+        aNode.originalCabinetPos = cab1.position.clone();
+
+        // Second filing cabinet on East wall alcove
+        const cab2 = new THREE.Mesh(cabGeo, [
+          sharedMaterials.archive.walnut,  // +X (wall)
+          sharedMaterials.archive.cabinet, // -X (drawer faces room)
+          sharedMaterials.archive.walnut,  // +Y top
+          sharedMaterials.archive.walnut,  // -Y bottom
+          sharedMaterials.archive.walnut,  // +Z
+          sharedMaterials.archive.walnut,  // -Z
+        ]);
+        cab2.position.set(rx + 3.35, 0.675, rz + 1.8);
+        roomGroup.add(cab2);
+        const b4 = new THREE.Box3().setFromObject(cab2);
+        this.wallColliders.push(b4);
+        this.registerCollider(b4, rKey);
+
+        this.archiveAnomalyNodes.push(aNode);
       }
 
       // Level 4: Machine Sub-level Overhead Industrial Steam Pipes & Heavy Boiler
@@ -616,14 +717,35 @@ export class LiminalWorld {
         exitBeacon.position.set(rx, 2.9, rz - 4.2);
         roomGroup.add(exitBeacon);
       } else if (room.biome === 'archive') {
-        // Warm glowing brass wall sconces on east & west walls
-        [-half + 0.15, half - 0.15].forEach((wx, i) => {
-          const sconceMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(0.12, 0.25, 0.12),
-            new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0xff8800, emissiveIntensity: 3.2 })
-          );
-          sconceMesh.position.set(rx + wx, 2.1, rz + (i === 0 ? -1.5 : 1.5));
-          roomGroup.add(sconceMesh);
+        // Warm glowing hooded brass wall sconces on east & west walls
+        const sconceHoodMat = sharedMaterials.archive.brass;
+        [-half + 0.12, half - 0.12].forEach((wx, i) => {
+          const sconceGroup = new THREE.Group();
+
+          // Brass shaded reflector hood
+          const hoodMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.22), sconceHoodMat);
+          hoodMesh.position.set(0, 0.12, 0);
+          sconceGroup.add(hoodMesh);
+
+          // Glowing warm incandescent filament bulb
+          const bulbMat = new THREE.MeshStandardMaterial({
+            color: 0xffe299,
+            emissive: 0xf59e0b,
+            emissiveIntensity: 3.2,
+            roughness: 0.2,
+          });
+          const bulbMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 0.08), bulbMat);
+          bulbMesh.position.set(0, 0, 0);
+          sconceGroup.add(bulbMesh);
+
+          sconceGroup.position.set(rx + wx, 2.1, rz + (i === 0 ? -1.5 : 1.5));
+          roomGroup.add(sconceGroup);
+
+          // Register in anomaly node
+          const aNode = this.archiveAnomalyNodes.find((n) => n.roomKey === rKey);
+          if (aNode && i === 0) {
+            aNode.sconce = bulbMesh;
+          }
         });
       } else if (room.biome === 'sublevel_red') {
         // Dual industrial hazard beacon lamps & gauge indicators
@@ -655,7 +777,6 @@ export class LiminalWorld {
       }
 
       // Build 4 Walls (with doorways for connected rooms)
-      const rKey = `${room.x},${room.z}`;
       this.buildWall(rx, rz, 'north', room.doors.some((d) => d.direction === 'north'), mats.wall, roomGroup, rKey);
       this.buildWall(rx, rz, 'south', room.doors.some((d) => d.direction === 'south'), mats.wall, roomGroup, rKey);
       this.buildWall(rx, rz, 'east', room.doors.some((d) => d.direction === 'east'), mats.wall, roomGroup, rKey);
@@ -673,6 +794,14 @@ export class LiminalWorld {
         );
         frameMesh.position.set(rx, 1.8, rz - half + 0.05);
         roomGroup.add(frameMesh);
+
+        if (room.biome === 'archive') {
+          const aNode = this.archiveAnomalyNodes.find((n) => n.roomKey === rKey);
+          if (aNode) {
+            aNode.portrait = frameMesh;
+            aNode.originalPortraitRot = frameMesh.rotation.z;
+          }
+        }
       }
 
       // Spawn 3D Items in Room
@@ -775,6 +904,7 @@ export class LiminalWorld {
     labyrinth.rooms.forEach((room) => {
       const rx = room.x * this.roomSize;
       const rz = room.z * this.roomSize;
+      const rKey = `${room.x},${room.z}`;
       room.items.forEach((item) => {
         this.spawnItemMesh(item, rx, rz);
       });
@@ -1830,6 +1960,50 @@ export class LiminalWorld {
             r.mesh.scale.set(currentScale, 1, currentScale);
             (r.mesh.material as THREE.MeshBasicMaterial).opacity = (1 - progress) * 0.35;
           }
+        }
+      }
+    }
+
+    // Level 3 Endless Archives: Deterministic subtle loop anomaly engine
+    if (this.currentLevel === 3) {
+      const rx = Math.round(this.camera.position.x / this.roomSize);
+      const rz = Math.round(this.camera.position.z / this.roomSize);
+      const rKey = `${rx},${rz}`;
+      if (rKey !== this.lastArchiveRoomKey) {
+        this.lastArchiveRoomKey = rKey;
+        this.archiveTraversedRooms++;
+      }
+
+      // Loop phase threshold (every 6 room transitions)
+      const loopPhase = Math.floor(this.archiveTraversedRooms / 6);
+      const timeSec = performance.now() * 0.001;
+
+      for (let i = 0; i < this.archiveAnomalyNodes.length; i++) {
+        const node = this.archiveAnomalyNodes[i];
+        const [nx, nz] = node.roomCoord;
+
+        // Anomaly 1: Filing cabinet in Room (2, 3) drawer ajar after loopPhase >= 1
+        if (nx === 2 && nz === 3 && node.cabinet && node.originalCabinetPos) {
+          const targetX = loopPhase >= 1 ? node.originalCabinetPos.x + 0.12 : node.originalCabinetPos.x;
+          const targetRot = loopPhase >= 1 ? 0.045 : 0;
+          node.cabinet.position.x = THREE.MathUtils.lerp(node.cabinet.position.x, targetX, 0.05);
+          node.cabinet.rotation.y = THREE.MathUtils.lerp(node.cabinet.rotation.y, targetRot, 0.05);
+        }
+
+        // Anomaly 2: Dying filament sconce in Room (4, 2) embers after loopPhase >= 2
+        if (nx === 4 && nz === 2 && node.sconce) {
+          const mat = node.sconce.material as THREE.MeshStandardMaterial;
+          if (loopPhase >= 2) {
+            mat.emissiveIntensity = 0.45 + Math.sin(timeSec * 2.5) * 0.2;
+          } else {
+            mat.emissiveIntensity = 3.2;
+          }
+        }
+
+        // Anomaly 3: Tilted antique portrait in Room (1, 3) after loopPhase >= 3
+        if (nx === 1 && nz === 3 && node.portrait && node.originalPortraitRot !== undefined) {
+          const targetRot = loopPhase >= 3 ? node.originalPortraitRot + 0.052 : node.originalPortraitRot;
+          node.portrait.rotation.z = THREE.MathUtils.lerp(node.portrait.rotation.z, targetRot, 0.05);
         }
       }
     }
